@@ -7,7 +7,7 @@ The following should be the easiest way to install and run this project.
 1. Clone this repo and the related [Unity Assets package](https://gits-15.sys.kth.se/DD2438/MASUnityAssets)
 2. Place them in a \<parent\> directory such that the repos are sibling folders. I.e.
    * \<parent\>/MASUnityAssets 
-   * \<parent\>/MAS2024-Assignment-2
+   * \<parent\>/MAS2025-Assignment-2
 3. Run the assignment project as normal.
 
 ## Package resolution failed?
