@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using FormationGame;
 using Imported.StandardAssets.Vehicles.Car.Scripts;
 using Scripts.Game;
 using Scripts.Map;
@@ -12,7 +13,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private MapManager m_MapManager;
     private ObstacleMap m_ObstacleMap;
     private GameObject[] m_OtherCars;
-    private LineOfSightGoal m_CurrentGoal;
+    private List<MultiVehicleGoal> m_CurrentGoals;
 
     public float steering;
     public float acceleration;
@@ -25,7 +26,7 @@ public class AIP1TrafficCar : MonoBehaviour
         m_MapManager = FindFirstObjectByType<MapManager>();
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), Vector3.one * 2); //Is not a MonoBehavior, so cannot fetch in the same fashion!
 
-        m_CurrentGoal = (LineOfSightGoal)FindFirstObjectByType<GameManagerA2>().vehicleToGoalMapping[gameObject]; // This car's goal.
+        m_CurrentGoals = FindFirstObjectByType<GameManagerA2>().GetGoals(gameObject); // This car's goal.
 
         m_OtherCars = GameObject.FindGameObjectsWithTag("Player");
         // Note that this array will have "holes" when objects are destroyed
@@ -33,8 +34,7 @@ public class AIP1TrafficCar : MonoBehaviour
         // If you dont like the "holes", you can re-fetch this during fixed update.
 
         // Where to go?
-        var targetPosition = m_CurrentGoal.targetPosition; //World Coordinates.
-
+       
         // Equivalent ways to find all the targets in the scene
         targetObjects = m_MapManager.GetTargetObjects();
         targetObjects = GameObject.FindGameObjectsWithTag("Target").ToList();

@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using FormationGame;
 using Scripts.Game;
 using Scripts.Utils;
 using UnityEngine;
@@ -8,33 +10,53 @@ public class GameManagerA2 : AbstractGameManager
 {
     public float maxDistance = 5;
     private bool isComplete;
-    public Dictionary<GameObject, Goal> vehicleToGoalMapping = new();
+    private Dictionary<GameObject, Goal> vehicleToGoalMapping = new();
+    private Dictionary<string, List<MultiVehicleGoal>> goalsByGroup;
+    private Dictionary<string, List<GameObject>> vehiclesByGroup;
 
+    //TODO: If free target count = free vehicle count, then 1 vehicle = 1 goal. Groups always cooperate.
     public override List<Goal> CreateGoals(List<GameObject> vehicles)
     {
         List<Goal> goals = new List<Goal>();
-        foreach (var mapManagerTargetPosition in mapManager.targetPositions)
-        {
-            var goal = new LineOfSightGoal(mapManager.transform.TransformPoint(mapManagerTargetPosition), maxDistance);
-            goals.Add(goal);
-            if (mapManager.startPositions.Count == mapManager.targetPositions.Count)
-            {
-                vehicleToGoalMapping[vehicles[goals.Count - 1]] = goal;
-            }
-        }
+        var targets = mapManager.transform.FindAllChildrenWithTag("Target");
 
-        var targets = mapManager.transform.Find("Grid/Targets");
-        if (targets != null)
-        {
-            foreach (var indexedObject in targets.GetChildren().Select((value, index) => new { value, index }))
-            {
-                indexedObject.value.GetComponent<GoalColorIndicator>()?.SetGoal(goals[indexedObject.index]);
-            }
-        }
+        vehiclesByGroup = vehicles.GroupBy(vehicle => vehicle.transform.parent.name)
+            .ToDictionary(
+                group => CreateKey(group.Key),
+                group => group.ToList()
+            );
 
+        goalsByGroup = targets.GroupBy(target => target.transform.parent.name)
+            .ToDictionary(
+                group => CreateKey(group.Key),
+                group => group.Select(target => CreateLoSGoal(target)).ToList()
+            ).ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.Select(goal => new MultiVehicleGoal(goal, vehiclesByGroup.GetValueOrDefault(pair.Key))).ToList()
+            );
 
-        return goals;
+        return goalsByGroup.Values
+            .SelectMany(group => group.ToList())
+            .Select(multi => (Goal)multi)
+            .ToList();
     }
+
+    public string CreateKey(string key)
+    {
+        if (key == "Targets") return "Free";
+        return key;
+    }
+
+    private LineOfSightGoal CreateLoSGoal(GameObject target)
+    {
+        var goal = new LineOfSightGoal(mapManager.transform.TransformPoint(target.transform.position), maxDistance);
+
+        var goalColorIndicator = target.GetComponent<GoalColorIndicator>();
+        if (goalColorIndicator != null) goalColorIndicator.SetGoal(goal);
+
+        return goal;
+    }
+
 
     protected void FixedUpdate()
     {
@@ -59,5 +81,29 @@ public class GameManagerA2 : AbstractGameManager
         }
 
         isComplete = goals.ToList().TrueForAll(goal => goal.IsAchieved());
+    }
+
+    public List<MultiVehicleGoal> GetGoals(GameObject vehicle)
+    {
+        var returnList = new List<MultiVehicleGoal>();
+
+        var team = GetTeam(vehicle);
+        var vehicleGoals = goalsByGroup[team];
+        if (team != "Free") returnList.AddRange(goalsByGroup.GetValueOrDefault("Free", new List<MultiVehicleGoal>()));
+
+        returnList.AddRange(vehicleGoals);
+        return returnList;
+    }
+
+    public string GetTeam(GameObject vehicle)
+    {
+        return vehiclesByGroup.FirstOrDefault(x => x.Value.Contains(vehicle)).Key;
+    }
+
+    public List<GameObject> GetTeamVehicles(GameObject vehicle)
+    {
+        var team = GetTeam(vehicle);
+        if (team == "Free") return new List<GameObject>() { vehicle };
+        return vehiclesByGroup[team];
     }
 }
