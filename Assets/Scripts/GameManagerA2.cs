@@ -34,7 +34,7 @@ public class GameManagerA2 : AbstractGameManager
                 group => group.Select(target => CreateLoSGoal(target)).ToList()
             ).ToDictionary(
                 pair => CreateKey(pair.Key),
-                pair => pair.Value.Select(goal => new MultiVehicleGoal(goal, vehiclesByGroup.GetValueOrDefault(pair.Key))).ToList()
+                pair => pair.Value.Select(goal => new MultiVehicleGoal(goal, vehiclesByGroup.GetValueOrDefault(pair.Key, new List<GameObject>()))).ToList()
             );
 
         if (goalsByGroup.ContainsKey(UNGROUPED_KEY) && vehiclesByGroup.ContainsKey(UNGROUPED_KEY) && goalsByGroup[UNGROUPED_KEY].Count == vehiclesByGroup[UNGROUPED_KEY].Count)
