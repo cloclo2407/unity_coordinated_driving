@@ -10,20 +10,21 @@ public class GameManagerA2 : AbstractGameManager
 {
     public float maxDistance = 5;
     private bool isComplete;
-    private Dictionary<GameObject, Goal> vehicleToGoalMapping = new();
     private Dictionary<string, List<MultiVehicleGoal>> goalsByGroup;
     private Dictionary<string, List<GameObject>> vehiclesByGroup;
+    private static string UNGROUPED_KEY = "Free";
 
-    //TODO: If free target count = free vehicle count, then 1 vehicle = 1 goal. Groups always cooperate.
     public override List<Goal> CreateGoals(List<GameObject> vehicles)
     {
-        List<Goal> goals = new List<Goal>();
         var targets = mapManager.transform.FindAllChildrenWithTag("Target");
+        var starts = mapManager.transform.FindAllChildrenWithTag("Start");
 
-        vehiclesByGroup = vehicles.GroupBy(vehicle => vehicle.transform.parent.name)
+        vehiclesByGroup = vehicles
+            .Select((vehicle, index) => new { Vehicle = vehicle, Start = starts[index] })
+            .GroupBy(pair => pair.Start.transform.parent.name)
             .ToDictionary(
                 group => CreateKey(group.Key),
-                group => group.ToList()
+                group => group.Select(pair => pair.Vehicle).ToList()
             );
 
         goalsByGroup = targets.GroupBy(target => target.transform.parent.name)
@@ -31,9 +32,20 @@ public class GameManagerA2 : AbstractGameManager
                 group => CreateKey(group.Key),
                 group => group.Select(target => CreateLoSGoal(target)).ToList()
             ).ToDictionary(
-                pair => pair.Key,
+                pair => CreateKey(pair.Key),
                 pair => pair.Value.Select(goal => new MultiVehicleGoal(goal, vehiclesByGroup.GetValueOrDefault(pair.Key))).ToList()
             );
+
+        if (goalsByGroup.ContainsKey(UNGROUPED_KEY) && vehiclesByGroup.ContainsKey(UNGROUPED_KEY) && goalsByGroup[UNGROUPED_KEY].Count == vehiclesByGroup[UNGROUPED_KEY].Count)
+        {
+            for (int i = 0; i < goalsByGroup[UNGROUPED_KEY].Count; i++)
+            {
+                var vehiclesByUngrouped = vehiclesByGroup[UNGROUPED_KEY];
+                var goalsByUngrouped = goalsByGroup[UNGROUPED_KEY];
+                goalsByUngrouped[i].ClearVehicles();
+                goalsByUngrouped[i].AssignVehicle(vehiclesByUngrouped[i]);
+            }
+        }
 
         return goalsByGroup.Values
             .SelectMany(group => group.ToList())
@@ -43,13 +55,14 @@ public class GameManagerA2 : AbstractGameManager
 
     public string CreateKey(string key)
     {
-        if (key == "Targets") return "Free";
+        if (key == "Targets") return UNGROUPED_KEY;
+        if (key == "Starts") return UNGROUPED_KEY;
         return key;
     }
 
     private LineOfSightGoal CreateLoSGoal(GameObject target)
     {
-        var goal = new LineOfSightGoal(mapManager.transform.TransformPoint(target.transform.position), maxDistance);
+        var goal = new LineOfSightGoal(target, maxDistance);
 
         var goalColorIndicator = target.GetComponent<GoalColorIndicator>();
         if (goalColorIndicator != null) goalColorIndicator.SetGoal(goal);
@@ -60,24 +73,12 @@ public class GameManagerA2 : AbstractGameManager
 
     protected void FixedUpdate()
     {
-        if (mapManager.startPositions.Count != mapManager.targetPositions.Count)
+        foreach (var vehicle in vehicleList)
         {
-            foreach (var vehicle in vehicleList)
+            foreach (var goal in goals)
             {
-                foreach (var goal in goals)
-                {
-                    goal.CheckAchieved(vehicle);
-                }
+                goal.CheckAchieved(vehicle);
             }
-        }
-        else
-        {
-            vehicleToGoalMapping.ToList().ForEach(pair => pair.Value.CheckAchieved(pair.Key));
-        }
-
-        if (!isComplete)
-        {
-            completionTime = goals.Max(goals => goals.CurrentTime());
         }
 
         isComplete = goals.ToList().TrueForAll(goal => goal.IsAchieved());
@@ -85,25 +86,20 @@ public class GameManagerA2 : AbstractGameManager
 
     public List<MultiVehicleGoal> GetGoals(GameObject vehicle)
     {
-        var returnList = new List<MultiVehicleGoal>();
-
-        var team = GetTeam(vehicle);
-        var vehicleGoals = goalsByGroup[team];
-        if (team != "Free") returnList.AddRange(goalsByGroup.GetValueOrDefault("Free", new List<MultiVehicleGoal>()));
-
-        returnList.AddRange(vehicleGoals);
-        return returnList;
+        return goals
+        .FindAll(goal => ((MultiVehicleGoal)goal).ContainsVehicle(vehicle))
+        .Select(goal => (MultiVehicleGoal)goal).ToList();
     }
 
-    public string GetTeam(GameObject vehicle)
+    public string GetGroup(GameObject vehicle)
     {
         return vehiclesByGroup.FirstOrDefault(x => x.Value.Contains(vehicle)).Key;
     }
 
-    public List<GameObject> GetTeamVehicles(GameObject vehicle)
+    public List<GameObject> GetGroupVehicles(GameObject vehicle)
     {
-        var team = GetTeam(vehicle);
-        if (team == "Free") return new List<GameObject>() { vehicle };
+        var team = GetGroup(vehicle);
+        if (team == UNGROUPED_KEY) return new List<GameObject>() { vehicle };
         return vehiclesByGroup[team];
     }
 }

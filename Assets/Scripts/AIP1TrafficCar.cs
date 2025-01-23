@@ -18,17 +18,19 @@ public class AIP1TrafficCar : MonoBehaviour
     public float steering;
     public float acceleration;
     private List<GameObject> startObjects;
-    private List<GameObject> targetObjects;
+    public List<GameObject> targetObjects;
 
     private void Start()
     {
         m_Car = GetComponent<CarController>();
         m_MapManager = FindFirstObjectByType<MapManager>();
-        m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), Vector3.one * 2); //Is not a MonoBehavior, so cannot fetch in the same fashion!
+        m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), Vector3.one * 2); 
 
-        m_CurrentGoals = FindFirstObjectByType<GameManagerA2>().GetGoals(gameObject); // This car's goal.
-
-        m_OtherCars = GameObject.FindGameObjectsWithTag("Player");
+        var gameManagerA2 = FindFirstObjectByType<GameManagerA2>();
+        m_CurrentGoals = gameManagerA2.GetGoals(gameObject); // This car's goal.
+        var teamVehicles = gameManagerA2.GetGroupVehicles(gameObject); //Other vehicles in a Group with this vehicle
+        m_OtherCars = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
+        
         // Note that this array will have "holes" when objects are destroyed
         // Will work for initial planning they should work
         // If you dont like the "holes", you can re-fetch this during fixed update.
@@ -38,6 +40,8 @@ public class AIP1TrafficCar : MonoBehaviour
         // Equivalent ways to find all the targets in the scene
         targetObjects = m_MapManager.GetTargetObjects();
         targetObjects = GameObject.FindGameObjectsWithTag("Target").ToList();
+
+        targetObjects = m_CurrentGoals.Select(goal => goal.GetTargetObject()).ToList();
 
         // Equivalent ways of finding the start positions
         startObjects = m_MapManager.GetStartObjects();

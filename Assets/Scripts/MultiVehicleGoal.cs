@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Scripts.Game;
 using UnityEngine;
 
@@ -12,14 +13,14 @@ namespace FormationGame
         public MultiVehicleGoal(Goal underlying, List<GameObject> objects)
         {
             trackedGoal = underlying;
-            teamVehicles = objects;
+            teamVehicles = new List<GameObject>(objects);
         }
 
         public bool CheckAchieved(GameObject objectToCheck)
         {
             if (teamVehicles.Contains(objectToCheck))
             {
-                return CheckAchieved(objectToCheck);
+                return trackedGoal.CheckAchieved(objectToCheck);
             }
 
             return false;
@@ -37,7 +38,27 @@ namespace FormationGame
 
         public float CurrentTime()
         {
-           return trackedGoal.CurrentTime();
+            return trackedGoal.CurrentTime();
+        }
+
+        internal void AssignVehicle(GameObject gameObject)
+        {
+            teamVehicles.Add(gameObject);
+        }
+
+        internal void ClearVehicles()
+        {
+            teamVehicles.Clear();
+        }
+
+        public GameObject GetTargetObject()
+        {
+            return trackedGoal.GetTargetObject();
+        }
+
+        public bool ContainsVehicle(GameObject vehicle)
+        {
+            return teamVehicles.Contains(vehicle);
         }
     }
 }
