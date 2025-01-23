@@ -81,6 +81,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: -4233866161759774149}
+    - targetCorrespondingSourceObject: {fileID: 1246155762223703638, guid: 59697cdff9e8a19489c9afa3022922f6,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -1240518562638055830}
   m_SourcePrefab: {fileID: 100100000, guid: 59697cdff9e8a19489c9afa3022922f6, type: 3}
 --- !u!1 &1201008588402055825 stripped
 GameObject:
@@ -100,6 +104,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0615546388c46a68ca4014cce1578b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrain_manager_game_object: {fileID: 0}
-  friends: []
-  enemies: []
+  steering: 0
+  acceleration: 0
+  targetObjects: []
+--- !u!114 &-1240518562638055830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1201008588402055825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc187e6e9750c1419b22c048c2b16b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  customRenderer: {fileID: 6815667759495573913}
+  initialColor: {r: 0, g: 0, b: 0, a: 0}
+--- !u!23 &6815667759495573913 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 6879238903532047710, guid: 59697cdff9e8a19489c9afa3022922f6,
+    type: 3}
+  m_PrefabInstance: {fileID: 135647722828184775}
+  m_PrefabAsset: {fileID: 0}

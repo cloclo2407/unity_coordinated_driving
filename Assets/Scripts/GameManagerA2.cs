@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using FormationGame;
+using NUnit.Framework;
 using Scripts.Game;
 using Scripts.Utils;
 using UnityEngine;
@@ -46,6 +47,14 @@ public class GameManagerA2 : AbstractGameManager
                 goalsByUngrouped[i].AssignVehicle(vehiclesByUngrouped[i]);
             }
         }
+
+        goalsByGroup.ToList()
+        .FindAll(pair => pair.Key != UNGROUPED_KEY)
+        .ForEach(pair => pair.Value.ForEach(goal => goal.GetTargetObject().GetComponent<GoalColorIndicator>().SetByIndex(vehiclesByGroup.Keys.ToList().IndexOf(pair.Key))));
+
+        vehiclesByGroup.ToList()
+        .FindAll(pair => pair.Key != UNGROUPED_KEY)
+          .ForEach(pair => pair.Value.ForEach(vehicle => vehicle.GetComponent<ColorIndicator>().SetByIndex(vehiclesByGroup.Keys.ToList().IndexOf(pair.Key))));
 
         return goalsByGroup.Values
             .SelectMany(group => group.ToList())
