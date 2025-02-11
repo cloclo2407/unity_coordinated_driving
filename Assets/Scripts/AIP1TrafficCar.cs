@@ -15,10 +15,14 @@ public class AIP1TrafficCar : MonoBehaviour
     private GameObject[] m_OtherCars;
     private List<MultiVehicleGoal> m_CurrentGoals;
 
+    public bool drawTargets;
+    public bool drawAllCars;
+    public bool drawTeamCars;
+
     public float steering;
     public float acceleration;
-    private List<GameObject> startObjects;
     public List<GameObject> targetObjects;
+    public List<GameObject> teamVehicles;
 
     private void Start()
     {
@@ -28,29 +32,51 @@ public class AIP1TrafficCar : MonoBehaviour
 
         var gameManagerA2 = FindFirstObjectByType<GameManagerA2>();
         m_CurrentGoals = gameManagerA2.GetGoals(gameObject); // This car's goal.
-        var teamVehicles = gameManagerA2.GetGroupVehicles(gameObject); //Other vehicles in a Group with this vehicle
+        teamVehicles = gameManagerA2.GetGroupVehicles(gameObject); //Other vehicles in a Group with this vehicle
         m_OtherCars = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
         
         // Note that this array will have "holes" when objects are destroyed
-        // Will work for initial planning they should work
+        // But for initial planning they should work
         // If you dont like the "holes", you can re-fetch this during fixed update.
 
         // Where to go?
        
         // Equivalent ways to find all the targets in the scene
-        targetObjects = m_MapManager.GetTargetObjects();
-        targetObjects = GameObject.FindGameObjectsWithTag("Target").ToList();
-
         targetObjects = m_CurrentGoals.Select(goal => goal.GetTargetObject()).ToList();
-
-        // Equivalent ways of finding the start positions
-        startObjects = m_MapManager.GetStartObjects();
-        startObjects = GameObject.FindGameObjectsWithTag("Start").ToList();
 
         // You can also fetch other types of objects using tags, assuming the objects you are looking for HAVE tags :).
         
         // Feel free to refer to any examples from previous assignments.
     }
+
+    private void Update()
+    {
+        if(drawTargets)
+        {
+            foreach (var item in targetObjects)
+            {
+                Debug.DrawLine(transform.position, item.transform.position, Color.red);
+            }
+        }
+
+        if(drawTeamCars)
+        {
+            foreach (var item in teamVehicles)
+            {
+                Debug.DrawLine(transform.position, item.transform.position, Color.blue);
+            }
+        }
+
+        if(drawAllCars)
+        {
+            foreach (var item in m_OtherCars)
+            {
+                Debug.DrawLine(transform.position, item.transform.position, Color.yellow);
+            }
+        }
+        //Debug.DrawLine(Vector3.zero, new Vector3(1, 0, 0), Color.red);
+    }
+
 
 
     private void FixedUpdate()
@@ -63,8 +89,11 @@ public class AIP1TrafficCar : MonoBehaviour
         //Example of cars moving into the centre of the field.
         Vector3 avg_pos = m_OtherCars.Aggregate(Vector3.zero, (sum, car) => sum + car.transform.position) / m_OtherCars.Length;
 
+
+        Vector3 goal_pos = targetObjects[0].transform.position;
         //var
         (steering, acceleration) = ControlsTowardsPoint(avg_pos);
+        (steering, acceleration) = ControlsTowardsPoint(goal_pos);
 
         m_Car.Move(steering, acceleration, acceleration, 0f);
     }
