@@ -91,6 +91,7 @@ public class GameManagerA2 : AbstractGameManager
         }
 
         isComplete = goals.ToList().TrueForAll(goal => goal.IsAchieved());
+        completionTime = goals.Select(g => g.CurrentTime()).Max();
     }
 
     public List<MultiVehicleGoal> GetGoals(GameObject vehicle)
