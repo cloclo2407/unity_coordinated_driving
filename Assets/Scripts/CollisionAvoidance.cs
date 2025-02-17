@@ -3,20 +3,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using Scripts.Map;
+using Imported.StandardAssets.Vehicles.Car.Scripts;
+
 
 public class CollisionAvoidance 
 {
     private float maxTimeToCollision = 5f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
     private float safetyRadius = 4.0f; // minimum distance required between the centers of the two cars
 
-    private Vector3 AvoidCollisions(Vector3 myVelocity) 
+    private Vector3 AvoidCollisions(Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars) 
     {
         foreach (var otherCar in m_OtherCars) // check for each car if there will be a collision
         {
-            if (otherCar == gameObject) continue; // skip self
+            if (otherCar == my_Car) continue; // skip self
 
-            Vector3 deltaPosition = otherCar.transform.position - transform.position; 
-            Vector3 deltaVelocity = otherCar.GetComponent<Rigidbody>().velocity - m_Car.Rigidbody.velocity;
+            Vector3 deltaPosition = otherCar.transform.position - my_Car.transform.position; 
+            Vector3 deltaVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity - my_Car.GetComponent<Rigidbody>().linearVelocity;
             
             // Check if the velocity is inside the velocity obstacle
             if (IsVelocityInsideVO(myVelocity, deltaPosition, deltaVelocity))

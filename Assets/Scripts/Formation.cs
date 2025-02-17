@@ -12,15 +12,15 @@ public class Formation
 
     // return a car to follow if one close going in the same direction
     // return null
-    private CarController LineFormation(Vector3 myPosition, Vector3 myVelocity)
+    private GameObject LineFormation(Vector3 myPosition, Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars)
     {
-        CarController carToFollow = null;
+        GameObject carToFollow = null;
         foreach (var otherCar in m_OtherCars)
         {
-            if (otherCar == gameObject) continue; // skip self
+            if (otherCar == my_Car) continue; // skip self
 
-            Vector3 otherPosition = otherCar.Position;
-            Vector3 otherVelocity = otherCar.Velocity;
+            Vector3 otherPosition = otherCar.transform.position;
+            Vector3 otherVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity;
 
             if (CanBeFollowed(myPosition, myVelocity, otherPosition, otherVelocity))
             {
@@ -33,9 +33,9 @@ public class Formation
     // return true if the other car is in front of my car and their directions are similar and their velocity are similar
     private bool CanBeFollowed (Vector3 myPosition, Vector3 myVelocity, Vector3 otherPosition, Vector3 otherVelocity)
     {
-        float deltaPosition = motherPosition - myPosition;
-        float deltaVelocity = Vector3.Norm(otherVelocity - myVelocity);
-        float behind = VectorDot(deltaPosition, otherVelocity);
+        Vector3 deltaPosition = otherPosition - myPosition;
+        float deltaVelocity = (otherVelocity - myVelocity).magnitude;
+        float behind = Vector3.Dot(deltaPosition, otherVelocity);
         float sameDirection = Vector3.Dot(myVelocity.normalized, otherVelocity.normalized);
         if (behind > 0 && sameDirection > minSameDirection && deltaVelocity < maxDeltaVelocity)
         {
