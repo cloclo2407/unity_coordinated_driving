@@ -9,7 +9,6 @@ public class CollisionAvoidance
     private float maxTimeToCollision = 5f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
     private float safetyRadius = 4.0f; // minimum distance required between the centers of the two cars
 
-
     private Vector3 AvoidCollisions(Vector3 myVelocity) 
     {
         foreach (var otherCar in m_OtherCars) // check for each car if there will be a collision
