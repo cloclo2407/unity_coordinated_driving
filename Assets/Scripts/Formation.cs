@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using Scripts.Map;
+using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class Formation
 {
@@ -11,10 +12,10 @@ public class Formation
 
     // return a car to follow if one close going in the same direction
     // return null
-    CarController Vector3 LineFormation(Vector3 myPosition, Vector3 myVelocity)
+    private CarController LineFormation(Vector3 myPosition, Vector3 myVelocity)
     {
         CarController carToFollow = null;
-        for (var otherCar in m_OtherCars)
+        foreach (var otherCar in m_OtherCars)
         {
             if (otherCar == gameObject) continue; // skip self
 
