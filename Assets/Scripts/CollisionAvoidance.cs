@@ -20,13 +20,14 @@ public class CollisionAvoidance
             Vector3 deltaVelocity = otherCar.GetComponent<Rigidbody>().velocity - m_Car.Rigidbody.velocity;
             
             // Check if the velocity is inside the velocity obstacle
-            if (IsVelocityInsideVO(myVelocity, deltaPosition, deltaVelocity, safetyRadius))
+            if (IsVelocityInsideVO(myVelocity, deltaPosition, deltaVelocity)
             {
-                float timeToCollision = CalculateTimeToCollision(deltaPosition, deltaVelocity);
-                if (timeToCollision > maxTimeToCollision)
-                    continue;
-                // Find a new velocity to avoid collision
-                myVelocity = GetSafeVelocity(myVelocity, deltaPosition, deltaVelocity, safetyRadius);
+                float timeToCollision = CalculateTimeToCollision(deltaPosition, deltaVelocity)
+                if (timeToCollision >= 0 && timeToCollision < maxTimeToCollision)
+                {
+                    // Find a new velocity to avoid collision
+                    myVelocity = GetSafeVelocity(myVelocity, deltaPosition, deltaVelocity);
+                }
             }
         }
 
@@ -34,20 +35,20 @@ public class CollisionAvoidance
     }
 
     // To determinate wether the car is going to hit another car with velocity obstacle
-    private bool IsVelocityInsideVO(Vector3 velocity, Vector3 deltaPosition, Vector3 deltaVelocity, float radius)
+    private bool IsVelocityInsideVO(Vector3 velocity, Vector3 deltaPosition, Vector3 deltaVelocity)
     {
         Vector3 apex = deltaVelocity; // The tip of the cone
         Vector3 diff = velocity - apex;
         float distance = Vector3.Cross(diff, deltaPosition).magnitude / deltaPosition.magnitude; // Cross = perpendicular distance
-        return distance < radius;
+        return distance < safetyRadius;
     }
 
     // Get a safe velocity vector outside of cone
-    private Vector3 GetSafeVelocity(Vector3 myVelocity, Vector3 deltaPosition, Vector3 deltaVelocity, float radius)
+    private Vector3 GetSafeVelocity(Vector3 myVelocity, Vector3 deltaPosition, Vector3 deltaVelocity)
     {
         Vector3 lateralDir = Vector3.Cross(deltaPosition, Vector3.up).normalized; // Perpendicular direction
-        Vector3 newVelocity1 = deltaVelocity + lateralDir * radius; // left of the cone
-        Vector3 newVelocity2 = deltaVelocity - lateralDir * radius; // right of the cone
+        Vector3 newVelocity1 = deltaVelocity + lateralDir * safetyRadius; // left of the cone
+        Vector3 newVelocity2 = deltaVelocity - lateralDir * safetyRadius; // right of the cone
         if (myVelocity - newVelocity1).sqrMagnitude < (myVelocity - newVelocity2).sqrMagnitude // keep the closest
         {
             return newVelocity1;
@@ -56,6 +57,21 @@ public class CollisionAvoidance
         {
             return newVelocity2;
         }
-    
+    }
+
+    // Calculate the time to collision between two cars
+    // Negative if no collision coming
+    private float CalculateTimeToCollision(Vector3 deltaPosition, Vector3 deltaVelocity)
+    {
+        float relativeSpeedSquared = deltaVelocity.sqrMagnitude;
+        if (relativeSpeedSquared == 0)
+            return -1f;
+
+        float t = -Vector3.Dot(deltaPosition, deltaVelocity) / relativeSpeedSquared;
+        if (t > 0)
+            return t;
+        else
+            return -1f;
+    }
 
 }
