@@ -66,7 +66,7 @@ public class CollisionAvoidance
         Vector3 lateralDir = Vector3.Cross(deltaPosition, Vector3.up).normalized; // Perpendicular direction
         Vector3 newVelocity1 = deltaVelocity + lateralDir * safetyRadius; // left of the cone
         Vector3 newVelocity2 = deltaVelocity - lateralDir * safetyRadius; // right of the cone
-        if ((myVelocity - newVelocity1).sqrMagnitude < (myVelocity - newVelocity2).sqrMagnitude) // keep the closest
+        if (Vector3.Angle(myVelocity, newVelocity1) < Vector3.Angle(myVelocity, newVelocity2)) // keep the closest
         {
             return newVelocity1;
         }
