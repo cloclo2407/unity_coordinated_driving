@@ -29,6 +29,9 @@ public class CollisionAvoidance
     /////////////////
     private Vector3 AvoidCollisions(Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars) 
     {
+        float minTimeCollision = maxTimeToCollision; // keep the collision that will happen first
+        Vector3 bestAvoidanceVelocity = myVelocityVelocity; // velocity to avoid first collision
+
         foreach (var otherCar in m_OtherCars) // check for each car if there will be a collision
         {
             if (otherCar == my_Car) continue; // skip self
@@ -40,15 +43,16 @@ public class CollisionAvoidance
             if (IsVelocityInsideVO(myVelocity, deltaPosition, deltaVelocity))
             {
                 float timeToCollision = CalculateTimexToCollision(deltaPosition, deltaVelocity);
-                if (timeToCollision >= 0 && timeToCollision < maxTimeToCollision)
+                if (timeToCollision >= 0 && timeToCollision < minTimeToCollision)
                 {
+                    minTimeCollision = timeToCollision;
                     // Find a new velocity to avoid collision
-                    myVelocity = GetSafeVelocity(myVelocity, deltaPosition, deltaVelocity);
+                    bestAvoidanceVelocity = GetSafeVelocity(myVelocity, deltaPosition, deltaVelocity);
                 }
             }
         }
 
-        return myVelocity;
+        return bestAvoidanceVelocity;
     }
 
     // To determinate wether the car is going to hit another car with velocity obstacle
