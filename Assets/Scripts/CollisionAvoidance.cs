@@ -23,7 +23,7 @@ public class CollisionAvoidance
             // Check if the velocity is inside the velocity obstacle
             if (IsVelocityInsideVO(myVelocity, deltaPosition, deltaVelocity))
             {
-                float timeToCollision = CalculateTimeToCollision(deltaPosition, deltaVelocity);
+                float timeToCollision = CalculateTimexToCollision(deltaPosition, deltaVelocity);
                 if (timeToCollision >= 0 && timeToCollision < maxTimeToCollision)
                 {
                     // Find a new velocity to avoid collision
@@ -38,10 +38,10 @@ public class CollisionAvoidance
     // To determinate wether the car is going to hit another car with velocity obstacle
     private bool IsVelocityInsideVO(Vector3 velocity, Vector3 deltaPosition, Vector3 deltaVelocity)
     {
-        Vector3 apex = deltaVelocity; // The tip of the cone
-        Vector3 diff = velocity - apex;
-        float distance = Vector3.Cross(diff, deltaPosition).magnitude / deltaPosition.magnitude; // Cross = perpendicular distance
-        return distance < safetyRadius;
+        Vector3 relativeVelocity = velocity - deltaVelocity;
+        float angle = Vector3.Angle(relativeVelocity, deltaPosition);
+        float maxAngle = Mathf.Atan(safetyRadius / deltaPosition.magnitude) * Mathf.Rad2Deg;
+        return angle < maxAngle;
     }
 
     // Get a safe velocity vector outside of cone
