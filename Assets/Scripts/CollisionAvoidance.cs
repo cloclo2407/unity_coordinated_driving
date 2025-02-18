@@ -11,6 +11,22 @@ public class CollisionAvoidance
     private float maxTimeToCollision = 5f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
     private float safetyRadius = 4.0f; // minimum distance required between the centers of the two cars
 
+    // Compute safe velocity to avoid collision
+    ///////////////////
+    // How to use in fixedUpdate:
+    //  Call AvoidCollisions to adjust velocity
+    //Vector3 safeVelocity = collisionAvoidance.AvoidCollisions(my_rigidbody.velocity, this, otherCars);
+
+    // Compute adjusted steering for obstacle avoidance
+    //Vector3 avoidanceSteering = (safeVelocity - my_rigidbody.velocity).normalized;
+    //float obstacle_avoiding_steering = Vector3.Dot(avoidanceSteering, transform.right);
+
+    // Blend the original steering with the avoidance steering
+    //float final_steering = steering + 0.5f * obstacle_avoiding_steering; // Weighted blend
+
+    // Apply control input to the car
+    //m_Car.Move(final_steering, accel, accel, 0f);
+    /////////////////
     private Vector3 AvoidCollisions(Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars) 
     {
         foreach (var otherCar in m_OtherCars) // check for each car if there will be a collision
