@@ -5,7 +5,6 @@ using System;
 using Scripts.Vehicle;
 using Scripts.Map;
 using Imported.StandardAssets.Vehicles.Car.Scripts;
-using OpenCover.Framework.Model;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
