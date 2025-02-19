@@ -330,7 +330,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
                     // Call AvoidCollisions to adjust velocity
                     Vector3 safeVelocity = m_CollisionAvoidance.AvoidCollisions(my_rigidbody.linearVelocity, m_Car, m_OtherCars);
-
+                    Debug.Log("safeVelocity" + safeVelocity);
                     // Compute adjusted steering for obstacle avoidance
                     Vector3 avoidanceSteering = (safeVelocity - my_rigidbody.linearVelocity).normalized;
                     float obstacle_avoiding_steering = Vector3.Dot(avoidanceSteering, transform.right);

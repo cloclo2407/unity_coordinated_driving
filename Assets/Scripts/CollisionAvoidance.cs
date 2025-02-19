@@ -51,8 +51,11 @@ public class CollisionAvoidance
                 }
             }
         }
-
-        return bestAvoidanceVelocity;
+        if (bestAvoidanceVelocity != null)
+        {
+            return bestAvoidanceVelocity;
+        }
+        return new Vector3(0,0,0);
     }
 
     // To determinate wether the car is going to hit another car with velocity obstacle
