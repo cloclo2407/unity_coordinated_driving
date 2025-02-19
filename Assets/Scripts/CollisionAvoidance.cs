@@ -8,8 +8,8 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class CollisionAvoidance 
 {
-    private float maxTimeToCollision = 5f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
-    private float safetyRadius = 4.0f; // minimum distance required between the centers of the two cars
+    private float maxTimeToCollision = 10000f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
+    private float safetyRadius = 5f; // minimum distance required between the centers of the two cars
 
     // Compute safe velocity to avoid collision
     ///////////////////
@@ -40,7 +40,7 @@ public class CollisionAvoidance
             Vector3 deltaVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity - my_Car.GetComponent<Rigidbody>().linearVelocity;
             
             // Check if the velocity is inside the velocity obstacle
-            if (IsVelocityInsideVO(myVelocity, deltaPosition, deltaVelocity))
+            if (IsVelocityInsideVO(deltaPosition, deltaVelocity))
             {
                 float timeToCollision = CalculateTimeToCollision(deltaPosition, deltaVelocity);
                 if (timeToCollision >= 0 && timeToCollision < minTimeToCollision)
@@ -51,36 +51,25 @@ public class CollisionAvoidance
                 }
             }
         }
-        if (bestAvoidanceVelocity != null)
-        {
-            return bestAvoidanceVelocity;
-        }
-        return new Vector3(0,0,0);
+      
+        return bestAvoidanceVelocity;
+        
     }
 
     // To determinate wether the car is going to hit another car with velocity obstacle
-    private bool IsVelocityInsideVO(Vector3 velocity, Vector3 deltaPosition, Vector3 deltaVelocity)
+    private bool IsVelocityInsideVO(Vector3 deltaPosition, Vector3 deltaVelocity)
     {
-        Vector3 relativeVelocity = velocity - deltaVelocity;
-        float angle = Vector3.Angle(relativeVelocity, deltaPosition);
+        float angle = Vector3.Angle(deltaVelocity, deltaPosition);
         float maxAngle = Mathf.Atan(safetyRadius / deltaPosition.magnitude) * Mathf.Rad2Deg;
         return angle < maxAngle;
     }
 
-    // Get a safe velocity vector outside of cone
+    // Get a safe velocity vector outside of cone (right of the cone)
     private Vector3 GetSafeVelocity(Vector3 myVelocity, Vector3 deltaPosition, Vector3 deltaVelocity)
     {
-        Vector3 lateralDir = Vector3.Cross(deltaPosition, Vector3.up).normalized; // Perpendicular direction
-        Vector3 newVelocity1 = deltaVelocity + lateralDir * safetyRadius; // left of the cone
-        Vector3 newVelocity2 = deltaVelocity - lateralDir * safetyRadius; // right of the cone
-        if (Vector3.Angle(myVelocity, newVelocity1) < Vector3.Angle(myVelocity, newVelocity2)) // keep the closest
-        {
-            return newVelocity1;
-        }
-        else
-        {
-            return newVelocity2;
-        }
+        Vector3 rightDirection = new Vector3(-deltaPosition.z, 0, deltaPosition.x).normalized; // Right perpendicular to deltaPosition 
+        Vector3 adjustedDirection = (myVelocity + rightDirection).normalized; 
+        return adjustedDirection;
     }
 
     // Calculate the time to collision between two cars

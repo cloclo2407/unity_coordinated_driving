@@ -334,7 +334,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     // Compute adjusted steering for obstacle avoidance
                     Vector3 avoidanceSteering = (safeVelocity - my_rigidbody.linearVelocity).normalized;
                     float obstacle_avoiding_steering = Vector3.Dot(avoidanceSteering, transform.right);
-                    Debug.Log("my avoidance steering " + obstacle_avoiding_steering);
+                    Debug.Log("my avoidance steering " + 10f * obstacle_avoiding_steering);
                     Debug.Log("basic  steering " + steering);
 
                     // Blend the original steering with the avoidance steering
