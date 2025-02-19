@@ -59,6 +59,7 @@ public class AIP1TrafficCar : MonoBehaviour
     {
         m_Car = GetComponent<CarController>();
         my_rigidbody = GetComponent<Rigidbody>();
+        m_CollisionAvoidance = new CollisionAvoidance();
         
         m_MapManager = FindFirstObjectByType<MapManager>();
         Vector3 cell_scale = Vector3.one * 2.6f;
@@ -330,13 +331,14 @@ public class AIP1TrafficCar : MonoBehaviour
 
                     // Call AvoidCollisions to adjust velocity
                     Vector3 safeVelocity = m_CollisionAvoidance.AvoidCollisions(my_rigidbody.linearVelocity, m_Car, m_OtherCars);
-                    Debug.Log("safeVelocity" + safeVelocity);
                     // Compute adjusted steering for obstacle avoidance
                     Vector3 avoidanceSteering = (safeVelocity - my_rigidbody.linearVelocity).normalized;
                     float obstacle_avoiding_steering = Vector3.Dot(avoidanceSteering, transform.right);
+                    Debug.Log("my avoidance steering " + obstacle_avoiding_steering);
+                    Debug.Log("basic  steering " + steering);
 
                     // Blend the original steering with the avoidance steering
-                    float final_steering = steering + 0.5f * obstacle_avoiding_steering; // Weighted blend
+                    float final_steering = steering + 1f * obstacle_avoiding_steering; // Weighted blend
 
                     // Apply control input to the car
                     m_Car.Move(final_steering, acceleration, acceleration, 0f);
