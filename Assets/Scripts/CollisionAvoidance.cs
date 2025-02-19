@@ -27,10 +27,10 @@ public class CollisionAvoidance
     // Apply control input to the car
     //m_Car.Move(final_steering, accel, accel, 0f);
     /////////////////
-    private Vector3 AvoidCollisions(Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars) 
+    public Vector3 AvoidCollisions(Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars) 
     {
-        float minTimeCollision = maxTimeToCollision; // keep the collision that will happen first
-        Vector3 bestAvoidanceVelocity = myVelocityVelocity; // velocity to avoid first collision
+        float minTimeToCollision = maxTimeToCollision; // keep the collision that will happen first
+        Vector3 bestAvoidanceVelocity = myVelocity; // velocity to avoid first collision
 
         foreach (var otherCar in m_OtherCars) // check for each car if there will be a collision
         {
@@ -42,10 +42,10 @@ public class CollisionAvoidance
             // Check if the velocity is inside the velocity obstacle
             if (IsVelocityInsideVO(myVelocity, deltaPosition, deltaVelocity))
             {
-                float timeToCollision = CalculateTimexToCollision(deltaPosition, deltaVelocity);
+                float timeToCollision = CalculateTimeToCollision(deltaPosition, deltaVelocity);
                 if (timeToCollision >= 0 && timeToCollision < minTimeToCollision)
                 {
-                    minTimeCollision = timeToCollision;
+                    minTimeToCollision = timeToCollision;
                     // Find a new velocity to avoid collision
                     bestAvoidanceVelocity = GetSafeVelocity(myVelocity, deltaPosition, deltaVelocity);
                 }

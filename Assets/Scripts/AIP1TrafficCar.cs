@@ -24,6 +24,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private ObstacleMap m_ObstacleMap;
     private GameObject[] m_OtherCars;
     private List<MultiVehicleGoal> m_CurrentGoals;
+    private CollisionAvoidance m_CollisionAvoidance;
     
     private List<StateNode> path_of_nodes = new List<StateNode>();
     private List<Vector3> path_of_points = new List<Vector3>();
@@ -326,7 +327,20 @@ public class AIP1TrafficCar : MonoBehaviour
                     // footbrake: we use accel as footbrake value in Move(): when accel<0, footbrake will slow down/ reverse the car
                     // handbrake does what you'd imagine
                     // steering: positive values steer the car to the right, negative values steer to the left
-                    m_Car.Move(steering + obstacle_avoiding_steering, acceleration, acceleration, 0f);
+
+                    // Call AvoidCollisions to adjust velocity
+                    Vector3 safeVelocity = m_CollisionAvoidance.AvoidCollisions(my_rigidbody.linearVelocity, m_Car, m_OtherCars);
+
+                    // Compute adjusted steering for obstacle avoidance
+                    Vector3 avoidanceSteering = (safeVelocity - my_rigidbody.linearVelocity).normalized;
+                    float obstacle_avoiding_steering = Vector3.Dot(avoidanceSteering, transform.right);
+
+                    // Blend the original steering with the avoidance steering
+                    float final_steering = steering + 0.5f * obstacle_avoiding_steering; // Weighted blend
+
+                    // Apply control input to the car
+                    m_Car.Move(final_steering, acceleration, acceleration, 0f);
+                    //m_Car.Move(steering + obstacle_avoiding_steering, acceleration, acceleration, 0f);
 
                     //When the car is perpendicular to the waypoint, it doesn't know whether to accelerate forwards or backwards so it gets stuck
                     if (!car_is_perpendicular) //We have to check for this
