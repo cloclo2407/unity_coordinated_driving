@@ -8,8 +8,8 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class CollisionAvoidance 
 {
-    private float maxTimeToCollision = 10000f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
-    private float safetyRadius = 100f; // minimum distance required between the centers of the two cars
+    private float maxTimeToCollision = 10f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
+    private float safetyRadius = 10f; // minimum distance required between the centers of the two cars
 
     // Compute safe velocity to avoid collision
     ///////////////////
@@ -38,7 +38,15 @@ public class CollisionAvoidance
 
             Vector3 deltaPosition = otherCar.transform.position - my_Car.transform.position; 
             Vector3 deltaVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity - my_Car.GetComponent<Rigidbody>().linearVelocity;
-            
+
+            // Check if the other car is moving in the opposite direction
+            Vector3 otherVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity;
+
+            /*if (Vector3.Dot(myVelocity.normalized, otherVelocity.normalized) >= 0)
+            {
+                continue; // Skip cars moving in the same direction
+            }*/
+
             // Check if the velocity is inside the velocity obstacle
             if (IsVelocityInsideVO(deltaPosition, deltaVelocity))
             {
@@ -68,7 +76,7 @@ public class CollisionAvoidance
     private Vector3 GetSafeVelocity(Vector3 myVelocity, Vector3 deltaPosition, Vector3 deltaVelocity)
     {
         Vector3 rightDirection = new Vector3(-deltaPosition.z, 0, deltaPosition.x).normalized; // Right perpendicular to deltaPosition 
-        Vector3 adjustedDirection = (myVelocity.normalized + rightDirection * 3f).normalized; 
+        Vector3 adjustedDirection = (myVelocity.normalized + rightDirection * 2f).normalized; 
         adjustedDirection = adjustedDirection * myVelocity.magnitude;
         return adjustedDirection;
     }

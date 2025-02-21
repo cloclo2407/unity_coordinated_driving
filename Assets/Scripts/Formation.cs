@@ -12,7 +12,7 @@ public class Formation
 
     // return a car to follow if one close going in the same direction
     // return null
-    private CarController LineFormation(Vector3 myPosition, Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars)
+    private GameObject LineFormation(CarController my_Car, GameObject[] m_OtherCars)
     {
         GameObject carToFollow = null;
         foreach (var otherCar in m_OtherCars)
@@ -22,7 +22,7 @@ public class Formation
             Vector3 otherPosition = otherCar.transform.position;
             Vector3 otherVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity;
 
-            if (CanBeFollowed(myPosition, myVelocity, otherPosition, otherVelocity))
+            if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity))
             {
                 carToFollow = otherCar;
             }
