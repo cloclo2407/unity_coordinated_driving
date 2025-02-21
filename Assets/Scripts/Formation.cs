@@ -12,7 +12,7 @@ public class Formation
 
     // return a car to follow if one close going in the same direction
     // return null
-    private GameObject LineFormation(CarController my_Car, GameObject[] m_OtherCars)
+    public GameObject LineFormation(CarController my_Car, GameObject[] m_OtherCars)
     {
         GameObject carToFollow = null;
         foreach (var otherCar in m_OtherCars)
@@ -37,7 +37,7 @@ public class Formation
         float deltaVelocity = (otherVelocity - myVelocity).magnitude;
         float behind = Vector3.Dot(deltaPosition, otherVelocity);
         float sameDirection = Vector3.Dot(myVelocity.normalized, otherVelocity.normalized);
-        if (behind > 0 && sameDirection > minSameDirection && deltaVelocity < maxDeltaVelocity)
+        if (behind > 0 && sameDirection > minSameDirection && deltaVelocity < maxDeltaVelocity && deltaPosition.magnitude < 10f)
         {
             return true;
         }

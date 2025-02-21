@@ -173,36 +173,42 @@ public class AIP1TrafficCar : MonoBehaviour
         //Example of cars moving into the centre of the field.
         //Vector3 avg_pos = m_OtherCars.Aggregate(Vector3.zero, (sum, car) => sum + car.transform.position) / m_OtherCars.Length;
         //(steering, acceleration) = ControlsTowardsPoint(avg_pos);
-        
+
         // UNCOMMENT CODE BELOW AND SWAP CONTROLLERS FOR CAR TODO TODO TODO
         //Vector3 goal_pos_global = targetObjects[0].transform.position; //targetObjects is a list of one element for some reason
         //(steering, acceleration) = ControlsTowardsPoint(goal_pos_global);
         //m_Car.Move(steering, acceleration, acceleration, 0f);
-    // NOTE! WE ARE GIVEN ControlsTowardsPoint() AS A CONTROLLER FOR THE CAR, SWITCH AWAY FROM PD-CONTROLLER TODO TODO TODO
-    // IN DRIVING AND OBSTACLE AVOIDING W. RAYCASTS TODO TODO TODO
-
-
+        // NOTE! WE ARE GIVEN ControlsTowardsPoint() AS A CONTROLLER FOR THE CAR, SWITCH AWAY FROM PD-CONTROLLER TODO TODO TODO
+        // IN DRIVING AND OBSTACLE AVOIDING W. RAYCASTS TODO TODO TODO
         
         if (smooth_path_of_points.Count < 2)
         {} //Most likely, the goal has been reached. So to not raise an index error, let's stop here
         else
-        {   //Execute your path here
+        {   
+            //Execute your path here
             Vector3 goal_pos_global = targetObjects[0].transform.position; //targetObjects is a list of one element for some reason
             Vector3 car_pos_global = transform.position;
             //Vector3 target_pos_global = lookAheadSphere.transform.position;
             Vector3 goal_error = goal_pos_global - car_pos_global;
             var distance_from_goal = goal_error.magnitude;
             var old_target_position = smooth_path_of_points[0];
-            var target_position = smooth_path_of_points[1];
+            var target_position = smooth_path_of_points[1];                           
             Vector3 target_velocity = (target_position - old_target_position) / Time.fixedDeltaTime;
 
-            // Draw the path of the car
-            /*for (int i = 0; i < smooth_path_of_points.Count - 1; i++)
+            GameObject carToFollow = m_Formation.LineFormation(m_Car, m_OtherCars);
+            if (carToFollow != null)
             {
-                Debug.DrawLine(smooth_path_of_points[i] + Vector3.up * 0.5f,
-                               smooth_path_of_points[i + 1] + Vector3.up * 0.5f,
-                               Color.yellow);
-            }*/
+                target_position = carToFollow.transform.position;
+                target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity;
+            }
+
+                // Draw the path of the car
+                /*for (int i = 0; i < smooth_path_of_points.Count - 1; i++)
+                {
+                    Debug.DrawLine(smooth_path_of_points[i] + Vector3.up * 0.5f,
+                                   smooth_path_of_points[i + 1] + Vector3.up * 0.5f,
+                                   Color.yellow);
+                }*/
 
 
             Vector3 position_error = target_position - car_pos_global;
