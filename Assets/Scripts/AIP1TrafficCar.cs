@@ -5,7 +5,7 @@ using FormationGame;
 using Imported.StandardAssets.Vehicles.Car.Scripts;
 using Scripts.Map;
 using Scripts.Game;
-using Scripts.Map;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
@@ -34,11 +34,8 @@ public class AIP1TrafficCar : MonoBehaviour
     public bool drawTeamCars;
 
     //For driving:
-    private float k_p = 12; // 2f; // 2f;
-    private float k_d = 0.05f; // 1f; // 0.5f;
     private float waypoint_margin = 3f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
     private float speed_limit = 3.5f;
-    private bool car_is_perpendicular = false;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
@@ -53,69 +50,81 @@ public class AIP1TrafficCar : MonoBehaviour
     public float acceleration;
     public List<GameObject> targetObjects;
     public List<GameObject> teamVehicles;
-    
+
     private void Start()
     {
         m_Car = GetComponent<CarController>();
         my_rigidbody = GetComponent<Rigidbody>();
-        
+
         m_MapManager = FindFirstObjectByType<MapManager>();
-        Vector3 cell_scale = Vector3.one * 2.6f;
+        Vector3 cell_scale = Vector3.one * 3f;
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), cell_scale);
-        m_ObstacleMap.margin = Vector3.one * 1; // (Changing cell margins)
+        m_ObstacleMap.margin = Vector3.one * 2f; // (Changing cell margins, do they work?)
 
         var gameManagerA2 = FindFirstObjectByType<GameManagerA2>();
         m_CurrentGoals = gameManagerA2.GetGoals(this.gameObject); // This car's goal.
         teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
         m_OtherCars = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
-        
+
         // Note that this array will have "holes" when objects are destroyed. For initial planning they should work.
         // If you don't like the "holes", you can re-fetch this during fixed update.
         // Equivalent ways to find all the targets in the scene
         targetObjects = m_CurrentGoals.Select(goal => goal.GetTargetObject()).ToList(); //targetObjects is a list of one element for some reason
         // You can also fetch other types of objects using tags, assuming the objects you are looking for HAVE tags :).
         // Feel free to refer to any examples from previous assignments.
-        
+
         ////////////////////////// Plan your path here
         myCarIndex = carCounter % m_MapManager.startPositions.Count; //Index of this specific car
-        carCounter++;               //myCarIndex is used to find the specific start_pos and goal_pos of this car
-        Debug.Log("myCarIndex: "+myCarIndex+", carCounter: "+carCounter+", targetObjects.Count: "+targetObjects.Count);
+        carCounter++; //myCarIndex is used to find the specific start_pos and goal_pos of this car
+        Debug.Log("myCarIndex: " + myCarIndex + ", carCounter: " + carCounter + ", targetObjects.Count: " + targetObjects.Count);
         Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
         Vector3 goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
-        
-        Debug.Log("start_pos: "+start_pos_global);
-        Debug.Log("goal_pos: "+goal_pos_global);
+
+        Debug.Log("start_pos: " + start_pos_global);
+        Debug.Log("goal_pos: " + goal_pos_global);
 
         PriorityQueue Q = new PriorityQueue();
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
-        StateNode start_node = new StateNode(start_pos_global, 0f, null, m_MapManager, m_ObstacleMap);
+        StateNode start_node = new StateNode(start_pos_global, 0f, goal_pos_global, null, m_MapManager, m_ObstacleMap);
         Q.Enqueue(start_node);
-        
-        while (Q.Count != 0) 
+
+        while (Q.Count != 0)
         {
             var current_node = Q.Dequeue();
             visited_nodes.Add(current_node.cell_position, current_node);
-            
-            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.waypoint_margin) //We have reached the goal, time to create the path
-            { 
-                current_node.fillPaths(this.path_of_nodes, this.path_of_points); 
+
+            if (Vector3.Distance(current_node.world_position, goal_pos_global) <=
+                this.waypoint_margin) //We have reached the goal, time to create the path
+            {
+                current_node.fillPaths(this.path_of_nodes, this.path_of_points);
                 //Now the path_of_nodes and path_of_points are ready to be executed. We can either use StateNodes or Vector3s in the controller.
                 break; // BREAK OUT OF WHILE LOOP, WE'RE DONE HERE
             }
+
             //else we keep looking:
             List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
-            foreach (StateNode n in new_nodes) { Q.Enqueue(n); } //Add all new nodes to the queue
+            foreach (StateNode n in new_nodes)
+            {
+                Q.Enqueue(n);
+            } //Add all new nodes to the queue
         }
-        
+
         Debug.Log("Stopped looking for path (left the while-loop)");
-        
+
+        //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
+        foreach (StateNode node in path_of_nodes)
+        {
+            StateNode.used_waypoints.Add(node.cell_position);
+        }
+
         // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
-        for (int i = 0; i < path_of_points.Count-1; i++) // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
-        { Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i+1] + Vector3.up, Color.magenta, 1000f); }
+        for (int i = 0; i < path_of_points.Count - 1; i++) // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
+        { Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f); } 
+
         //////////////////////////Catmull-Rom:
         SmoothSplineCatmullRom(path_of_points, 5);
-        for (int j = 0; j < smooth_path_of_points.Count-1; j++)
-        { Debug.DrawLine(smooth_path_of_points[j] + Vector3.up, smooth_path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
+        //for (int j = 0; j < smooth_path_of_points.Count-1; j++)
+        //{ Debug.DrawLine(smooth_path_of_points[j] + Vector3.up, smooth_path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
         Debug.Log("Path of points contains :"+ path_of_points.Count + "points");
         Debug.Log("Smooth path contains :"+ smooth_path_of_points.Count + "points");
@@ -193,154 +202,81 @@ public class AIP1TrafficCar : MonoBehaviour
 
 
     private void FixedUpdate()
-    {
-        // Execute your path and collision checking here
-        // Feel free to refer to any examples from previous assignments.
+    {   // Feel free to refer to any examples from previous assignments.
 
-        //Example of cars moving into the centre of the field.
-        //Vector3 avg_pos = m_OtherCars.Aggregate(Vector3.zero, (sum, car) => sum + car.transform.position) / m_OtherCars.Length;
-        //(steering, acceleration) = ControlsTowardsPoint(avg_pos);
-        
-        // UNCOMMENT CODE BELOW AND SWAP CONTROLLERS FOR CAR TODO TODO TODO
-        //Vector3 goal_pos_global = targetObjects[0].transform.position; //targetObjects is a list of one element for some reason
-        //(steering, acceleration) = ControlsTowardsPoint(goal_pos_global);
-        //m_Car.Move(steering, acceleration, acceleration, 0f);
-    // NOTE! WE ARE GIVEN ControlsTowardsPoint() AS A CONTROLLER FOR THE CAR, SWITCH AWAY FROM PD-CONTROLLER TODO TODO TODO
-    // IN DRIVING AND OBSTACLE AVOIDING W. RAYCASTS TODO TODO TODO
-        
-        if (smooth_path_of_points.Count < 2)
-        {} //Most likely, the goal has been reached. So to not raise an index error, let's stop here
+        if (smooth_path_of_points.Count == 0)
+        { } //Goal reached, do nothing
         else
         {   //Execute your path here
             Vector3 goal_pos_global = targetObjects[0].transform.position; //targetObjects is a list of one element for some reason
             Vector3 car_pos_global = transform.position;
-            //Vector3 target_pos_global = lookAheadSphere.transform.position;
-            Vector3 goal_error = goal_pos_global - car_pos_global;
-            var distance_from_goal = goal_error.magnitude;
-            var old_target_position = smooth_path_of_points[0];
-            var target_position = smooth_path_of_points[1];
-            Vector3 target_velocity = (target_position - old_target_position) / Time.fixedDeltaTime;
-            Vector3 position_error = target_position - car_pos_global;
-            Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
-            Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
-            Vector3 vector_between_car_and_waypoint = car_pos_global - smooth_path_of_points[0];
-            float current_speed = my_rigidbody.linearVelocity.magnitude;
-            int[] perpendicular_angles = {85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95};
-            float angle_to_waypoint =
-                Vector3.SignedAngle(transform.forward, vector_between_car_and_waypoint,
-                    Vector3.up); //transform.forward is the car's forward direction
-            
+            Vector3 goal_vector = car_pos_global - goal_pos_global;
+            var distance_from_goal = goal_vector.magnitude;
+            var target_position = smooth_path_of_points[0];
+
             //Dynamic obstacle avoidance with RAYCASTS
             raycast_hit_positions.Clear();
             float scan_distance;
-            
             //I'm working with a droplet-shape of rays. I want the front rays to be longer than the ones on the sides of the car.
             //Mapping function f(x) = 1-abs(x)/45. x is our angle i, f(x) is our scan distance.
-        
-            for (float i = -80f; i <= 80f; i+= 5f) { // 90/5=18 rays
-
-                scan_distance = max_scan_distance - max_scan_distance*(Mathf.Abs(i) / 80f);
-                Vector3 direction_i = Vector3.Normalize(Quaternion.Euler(0, i, 0)*transform.forward); //Quat.Euler(0,i,0)*transf.fwd rotates transf.fwd i degrees around y-axis
-                Debug.DrawLine(transform.position, transform.position+(direction_i*scan_distance), Color.blue);
-                
+            for (float i = -80f; i <= 80f; i += 5f)
+            {
+                // 90/5=18 rays
+                scan_distance = max_scan_distance - max_scan_distance * (Mathf.Abs(i) / 80f);
+                Vector3 direction_i =
+                    Vector3.Normalize(Quaternion.Euler(0, i, 0) *
+                                      transform
+                                          .forward); //Quat.Euler(0,i,0)*transf.fwd rotates transf.fwd i degrees around y-axis
+                Debug.DrawLine(transform.position, transform.position + (direction_i * scan_distance), Color.blue);
                 RaycastHit hit_object; //declare hit-object
                 if (Physics.Raycast(transform.position, direction_i, out hit_object, scan_distance))
-                {   //obstacle detected close to vehicle, save the position where raycast hit it
-                    raycast_hit_positions.Add(hit_object.point); //adding point of impact (in global coords) where ray hit the obstacle
+                {
+                    //obstacle detected close to vehicle, save the position where raycast hit it
+                    raycast_hit_positions.Add(hit_object
+                        .point); //adding point of impact (in global coords) where ray hit the obstacle
                 }
             }
-        
+
             if (raycast_hit_positions.Count > 0) //We are currently looking at obstacles with our raycasts
             {
                 waypoint_margin = 4f; //Increasing waypoint margin while maneuvering away from obstacle to not lose path
                 foreach (Vector3 hit_pos in raycast_hit_positions)
-                {   //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
-                
+                {
+                    //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
                     if (obstacle_avoiding_steering < obstacle_avoiding_steering_limit)
                     {
-                        var old_waypoint = smooth_path_of_points[0];
-                        Vector3 target_v = (hit_pos - old_waypoint) / Time.fixedDeltaTime;  //This is just the adapted PD
-                        Vector3 pos_err = hit_pos - car_pos_global;                         //controller algorithm
-                        Vector3 velocity_err = target_v - my_rigidbody.linearVelocity;      //used for steering away from obstacles
-                        Vector3 desired_acc = k_p * pos_err + k_d * velocity_err;
-                        obstacle_avoiding_steering += -Vector3.Dot(desired_acc, transform.right);
+                        float collide_with_obstacle_steering;
+                        float collide_with_obstacle_accel; //currently unused
+                        (collide_with_obstacle_steering, collide_with_obstacle_accel) = ControlsTowardsPoint(hit_pos);
+                        obstacle_avoiding_steering += -collide_with_obstacle_steering;
                         obstacle_avoiding_steering = Mathf.Clamp(obstacle_avoiding_steering,
-                            -1*obstacle_avoiding_steering_limit, obstacle_avoiding_steering_limit);
+                            -1 * obstacle_avoiding_steering_limit, obstacle_avoiding_steering_limit);
                     }
                 }
             }
             else //No obstacles nearby
             {
                 obstacle_avoiding_steering = 0f;
-                if (!car_is_perpendicular) // We increase waypoint_margin IF car_is_perpendicular = true OR we spot obstacles with raycast.
-                { waypoint_margin = 3f; }  // We only decrease waypoint_margin IF car_is_perpendicular = false AND we do not spot obstacles w. raycast.
+                waypoint_margin =
+                    3f; // We only decrease waypoint_margin IF car_is_perpendicular = false AND we do not spot obstacles w. raycast.
             }
-            //Dynamic obstacle avoidance above
-            Debug.Log("Avoidance steering: "+obstacle_avoiding_steering + "-------------------");
-            
-            if (distance_from_goal < waypoint_margin) //We have reached the goal
+
+            //Driving
+            if (Vector3.Magnitude(car_pos_global - smooth_path_of_points[0]) < waypoint_margin)
             {
-                Debug.Log("Goal reached! :D");
-                smooth_path_of_points.Clear(); //empty the list
-            }
-            else if (Vector3.Magnitude(car_pos_global - smooth_path_of_points[0]) < waypoint_margin) 
-            {   // we have reached the current target position
+                // we have reached the current target position
                 //Debug.Log("Reached next target position!");
                 smooth_path_of_points.RemoveAt(0); //remove index 0 so we can go to next target
             }
             else // We are driving to the next waypoint
             {
-                if (car_is_perpendicular)
-                {
-                    //Drive out of this situation
-                    steering = Vector3.Dot(desired_acceleration, transform.right);
-                    acceleration = (my_rigidbody.linearVelocity.magnitude > speed_limit) ? -1f : 10f;
-                    //?: "ternary operator". Assigns accel the value to left of : if condition in front of ? is true, otherwise assigns accel = value to right of :
-
-                    Debug.DrawLine(transform.position, target_position + Vector3.up, Color.red);
-                    //Debug.Log("Steering: "+steering+" Velocity: "+current_speed+" Acceleration: "+accel);
-
-                    m_Car.Move(steering, acceleration, acceleration, 0f);
-
-                    //Check if still perpendicular, otherwise this.car_is_perpendicular = false;
-                    if (!perpendicular_angles.Contains((int)Mathf.Round(Mathf.Abs(angle_to_waypoint))))
-                    {
-                        car_is_perpendicular = false;
-                        Debug.Log("No longer perpendicular to path");
-                        Debug.Log("angle_to_waypoint = "+angle_to_waypoint);
-                        if (raycast_hit_positions.Count == 0) // We increase waypoint_margin IF car_is_perpendicular = true OR we spot obstacles with raycast.
-                        { this.waypoint_margin = 3f; } // We only decrease waypoint_margin IF car_is_perpendicular = false AND we do not spot obstacles w. raycast.
-                    }
-                }
-                else //Driving between waypoints along the path, car not perpendicular to path, path hasn't ended yet
-                {
-                    steering = Vector3.Dot(desired_acceleration, transform.right);
-                    acceleration = (my_rigidbody.linearVelocity.magnitude > speed_limit) ? -1f : Vector3.Dot(desired_acceleration, transform.forward);
-                    //?: "ternary operator". Assigns accel the value to left of : if condition in front of ? is true, otherwise assigns accel = value to right of :
-
-                    Debug.DrawLine(transform.position, target_position + Vector3.up, Color.red);
-                    //Debug.Log("Steering: "+steering+" Velocity: "+current_speed+" Acceleration: "+accel);
-                    // Control the car via mCar.Move()
-                    // Found via testing:
-                    // accel: only takes positive values, accelerates car (negative values do nothing)
-                    // footbrake: we use accel as footbrake value in Move(): when accel<0, footbrake will slow down/ reverse the car
-                    // handbrake does what you'd imagine
-                    // steering: positive values steer the car to the right, negative values steer to the left
-                    m_Car.Move(steering + obstacle_avoiding_steering, acceleration, acceleration, 0f);
-
-                    //When the car is perpendicular to the waypoint, it doesn't know whether to accelerate forwards or backwards so it gets stuck
-                    if (!car_is_perpendicular) //We have to check for this
-                    {
-                        //Check if perpendicular, if it is then this.car_is_perpendicular = true;
-                        if (perpendicular_angles.Contains((int)Mathf.Round(Mathf.Abs(angle_to_waypoint))))
-                        {
-                            car_is_perpendicular = true;
-                            this.waypoint_margin = 6f;
-                            Debug.Log("Car is perpendicular to path");
-                            Debug.Log("angle_to_waypoint = "+angle_to_waypoint);
-                        }
-                    }
-                }
+                (steering, acceleration) = ControlsTowardsPoint(target_position);
+                acceleration =
+                    (my_rigidbody.linearVelocity.magnitude > speed_limit)
+                        ? -1f
+                        : acceleration; //?: "ternary operator". Assigns accel the value to left of : if condition in front of ? is true, otherwise assigns accel = value to right of :
+                Debug.DrawLine(transform.position, target_position + Vector3.up, Color.red);
+                m_Car.Move(steering + obstacle_avoiding_steering, acceleration, acceleration, 0f);
             }
         }
     }
@@ -381,7 +317,8 @@ public class AIP1TrafficCar : MonoBehaviour
         {
             steering = alpha;
         }
-
+        
         return (steering, acceleration);
     }
 }
+
