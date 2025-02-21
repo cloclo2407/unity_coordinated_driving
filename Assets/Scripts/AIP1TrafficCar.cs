@@ -125,7 +125,7 @@ public class AIP1TrafficCar : MonoBehaviour
     {
         if (originalPath.Count < 2)
             return;
-        
+        this.smooth_path_of_points.Clear();
         // Add first waypoint
         this.smooth_path_of_points.Add(originalPath[0]);
 
