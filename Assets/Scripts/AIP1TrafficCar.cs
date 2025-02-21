@@ -35,6 +35,8 @@ public class AIP1TrafficCar : MonoBehaviour
     public bool drawAllCars;
     public bool drawTeamCars;
 
+    public bool IsBeingFollowed = false;
+
     //For driving:
     private float k_p = 12; // 2f; // 2f;
     private float k_d = 0.05f; // 1f; // 0.5f;

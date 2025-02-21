@@ -21,10 +21,14 @@ public class Formation
 
             Vector3 otherPosition = otherCar.transform.position;
             Vector3 otherVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity;
+            AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
 
-            if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity))
+
+            if (!otherCarScript.IsBeingFollowed && CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity))
             {
                 carToFollow = otherCar;
+                otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
+                break; // Exit loop after finding a car to follow
             }
         }
         return carToFollow;
