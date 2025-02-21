@@ -25,6 +25,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private GameObject[] m_OtherCars;
     private List<MultiVehicleGoal> m_CurrentGoals;
     private CollisionAvoidance m_CollisionAvoidance;
+    private Formation m_Formation;
     
     private List<StateNode> path_of_nodes = new List<StateNode>();
     private List<Vector3> path_of_points = new List<Vector3>();
@@ -60,6 +61,7 @@ public class AIP1TrafficCar : MonoBehaviour
         m_Car = GetComponent<CarController>();
         my_rigidbody = GetComponent<Rigidbody>();
         m_CollisionAvoidance = new CollisionAvoidance();
+        m_Formation = new Formation();
         
         m_MapManager = FindFirstObjectByType<MapManager>();
         Vector3 cell_scale = Vector3.one * 2.6f;
@@ -112,12 +114,12 @@ public class AIP1TrafficCar : MonoBehaviour
         Debug.Log("Stopped looking for path (left the while-loop)");
         
         // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
-        for (int i = 0; i < path_of_points.Count-1; i++) // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
-        { Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i+1] + Vector3.up, Color.magenta, 1000f); }
+        //for (int i = 0; i < path_of_points.Count-1; i++) // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
+        //{ Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i+1] + Vector3.up, Color.magenta, 1000f); }
         //////////////////////////Catmull-Rom:
         SmoothSplineCatmullRom(path_of_points, 5);
-        for (int j = 0; j < smooth_path_of_points.Count-1; j++)
-        { Debug.DrawLine(smooth_path_of_points[j] + Vector3.up, smooth_path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
+        //for (int j = 0; j < smooth_path_of_points.Count-1; j++)
+        //{ Debug.DrawLine(smooth_path_of_points[j] + Vector3.up, smooth_path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
         Debug.Log("Path of points contains :"+ path_of_points.Count + "points");
         Debug.Log("Smooth path contains :"+ smooth_path_of_points.Count + "points");
@@ -162,38 +164,7 @@ public class AIP1TrafficCar : MonoBehaviour
         Vector3 d = -p0 + 3f * p1 - 3f * p2 + p3;
         return 0.5f * (a + (b * t) + (c * t * t) + (d * t * t * t));
     }
-
-    /*
-    private void Update()
-    {
-        if(drawTargets)
-        {
-            foreach (var item in targetObjects)
-            {
-                Debug.DrawLine(transform.position, item.transform.position, Color.red);
-            }
-        }
-
-        if(drawTeamCars)
-        {
-            foreach (var item in teamVehicles)
-            {
-                Debug.DrawLine(transform.position, item.transform.position, Color.blue);
-            }
-        }
-
-        if(drawAllCars)
-        {
-            foreach (var item in m_OtherCars)
-            {
-                Debug.DrawLine(transform.position, item.transform.position, Color.yellow);
-            }
-        }
-        //Debug.DrawLine(Vector3.zero, new Vector3(1, 0, 0), Color.red);
-    }
-    */
-
-
+    
     private void FixedUpdate()
     {
         // Execute your path and collision checking here
@@ -209,6 +180,8 @@ public class AIP1TrafficCar : MonoBehaviour
         //m_Car.Move(steering, acceleration, acceleration, 0f);
     // NOTE! WE ARE GIVEN ControlsTowardsPoint() AS A CONTROLLER FOR THE CAR, SWITCH AWAY FROM PD-CONTROLLER TODO TODO TODO
     // IN DRIVING AND OBSTACLE AVOIDING W. RAYCASTS TODO TODO TODO
+
+
         
         if (smooth_path_of_points.Count < 2)
         {} //Most likely, the goal has been reached. So to not raise an index error, let's stop here
@@ -222,6 +195,16 @@ public class AIP1TrafficCar : MonoBehaviour
             var old_target_position = smooth_path_of_points[0];
             var target_position = smooth_path_of_points[1];
             Vector3 target_velocity = (target_position - old_target_position) / Time.fixedDeltaTime;
+
+            // Draw the path of the car
+            /*for (int i = 0; i < smooth_path_of_points.Count - 1; i++)
+            {
+                Debug.DrawLine(smooth_path_of_points[i] + Vector3.up * 0.5f,
+                               smooth_path_of_points[i + 1] + Vector3.up * 0.5f,
+                               Color.yellow);
+            }*/
+
+
             Vector3 position_error = target_position - car_pos_global;
             Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
             Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
@@ -231,7 +214,19 @@ public class AIP1TrafficCar : MonoBehaviour
             float angle_to_waypoint =
                 Vector3.SignedAngle(transform.forward, vector_between_car_and_waypoint,
                     Vector3.up); //transform.forward is the car's forward direction
-            
+
+            // Draw the direction the car is following along the path
+            Debug.DrawLine(car_pos_global, car_pos_global + desired_acceleration.normalized * 8f, Color.blue);
+
+            //  Call AvoidCollisions to adjust velocity
+            Vector3 safeVelocity = m_CollisionAvoidance.AvoidCollisions(my_rigidbody.linearVelocity, m_Car, m_OtherCars);
+            Debug.DrawLine(car_pos_global, car_pos_global + safeVelocity.normalized * 8f, Color.red);
+
+
+            // Compute adjusted steering for obstacle avoidance
+            Vector3 avoidanceSteering = (safeVelocity - my_rigidbody.linearVelocity).normalized;
+            float avoiding_steering = Vector3.Dot(avoidanceSteering, transform.right);
+
             //Dynamic obstacle avoidance with RAYCASTS
             raycast_hit_positions.Clear();
             float scan_distance;
@@ -243,7 +238,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
                 scan_distance = max_scan_distance - max_scan_distance*(Mathf.Abs(i) / 80f);
                 Vector3 direction_i = Vector3.Normalize(Quaternion.Euler(0, i, 0)*transform.forward); //Quat.Euler(0,i,0)*transf.fwd rotates transf.fwd i degrees around y-axis
-                Debug.DrawLine(transform.position, transform.position+(direction_i*scan_distance), Color.blue);
+                //Debug.DrawLine(transform.position, transform.position+(direction_i*scan_distance), Color.blue);
                 
                 RaycastHit hit_object; //declare hit-object
                 if (Physics.Raycast(transform.position, direction_i, out hit_object, scan_distance))
@@ -268,6 +263,8 @@ public class AIP1TrafficCar : MonoBehaviour
                         obstacle_avoiding_steering += -Vector3.Dot(desired_acc, transform.right);
                         obstacle_avoiding_steering = Mathf.Clamp(obstacle_avoiding_steering,
                             -1*obstacle_avoiding_steering_limit, obstacle_avoiding_steering_limit);
+
+                  
                     }
                 }
             }
@@ -278,20 +275,20 @@ public class AIP1TrafficCar : MonoBehaviour
                 { waypoint_margin = 3f; }  // We only decrease waypoint_margin IF car_is_perpendicular = false AND we do not spot obstacles w. raycast.
             }
             //Dynamic obstacle avoidance above
-            Debug.Log("Avoidance steering: "+obstacle_avoiding_steering + "-------------------");
-            
+
             if (distance_from_goal < waypoint_margin) //We have reached the goal
             {
                 Debug.Log("Goal reached! :D");
                 smooth_path_of_points.Clear(); //empty the list
             }
-            else if (Vector3.Magnitude(car_pos_global - smooth_path_of_points[0]) < waypoint_margin) 
+            else if (Vector3.Magnitude(car_pos_global - smooth_path_of_points[0]) < waypoint_margin)
             {   // we have reached the current target position
                 //Debug.Log("Reached next target position!");
                 smooth_path_of_points.RemoveAt(0); //remove index 0 so we can go to next target
             }
             else // We are driving to the next waypoint
             {
+
                 if (car_is_perpendicular)
                 {
                     //Drive out of this situation
@@ -299,7 +296,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     acceleration = (my_rigidbody.linearVelocity.magnitude > speed_limit) ? -1f : 10f;
                     //?: "ternary operator". Assigns accel the value to left of : if condition in front of ? is true, otherwise assigns accel = value to right of :
 
-                    Debug.DrawLine(transform.position, target_position + Vector3.up, Color.red);
+                    //Debug.DrawLine(transform.position, target_position + Vector3.up, Color.red);
                     //Debug.Log("Steering: "+steering+" Velocity: "+current_speed+" Acceleration: "+accel);
 
                     m_Car.Move(steering, acceleration, acceleration, 0f);
@@ -308,8 +305,8 @@ public class AIP1TrafficCar : MonoBehaviour
                     if (!perpendicular_angles.Contains((int)Mathf.Round(Mathf.Abs(angle_to_waypoint))))
                     {
                         car_is_perpendicular = false;
-                        Debug.Log("No longer perpendicular to path");
-                        Debug.Log("angle_to_waypoint = "+angle_to_waypoint);
+                        //Debug.Log("No longer perpendicular to path");
+                        //Debug.Log("angle_to_waypoint = " + angle_to_waypoint);
                         if (raycast_hit_positions.Count == 0) // We increase waypoint_margin IF car_is_perpendicular = true OR we spot obstacles with raycast.
                         { this.waypoint_margin = 3f; } // We only decrease waypoint_margin IF car_is_perpendicular = false AND we do not spot obstacles w. raycast.
                     }
@@ -320,7 +317,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     acceleration = (my_rigidbody.linearVelocity.magnitude > speed_limit) ? -1f : Vector3.Dot(desired_acceleration, transform.forward);
                     //?: "ternary operator". Assigns accel the value to left of : if condition in front of ? is true, otherwise assigns accel = value to right of :
 
-                    Debug.DrawLine(transform.position, target_position + Vector3.up, Color.red);
+                    //Debug.DrawLine(transform.position, target_position + Vector3.up, Color.red);
                     //Debug.Log("Steering: "+steering+" Velocity: "+current_speed+" Acceleration: "+accel);
                     // Control the car via mCar.Move()
                     // Found via testing:
@@ -329,20 +326,8 @@ public class AIP1TrafficCar : MonoBehaviour
                     // handbrake does what you'd imagine
                     // steering: positive values steer the car to the right, negative values steer to the left
 
-                    // Call AvoidCollisions to adjust velocity
-                    Vector3 safeVelocity = m_CollisionAvoidance.AvoidCollisions(my_rigidbody.linearVelocity, m_Car, m_OtherCars);
-                    // Compute adjusted steering for obstacle avoidance
-                    Vector3 avoidanceSteering = (safeVelocity - my_rigidbody.linearVelocity).normalized;
-                    float obstacle_avoiding_steering = Vector3.Dot(avoidanceSteering, transform.right);
-                    Debug.Log("my avoidance steering " + 10f * obstacle_avoiding_steering);
-                    Debug.Log("basic  steering " + steering);
-
-                    // Blend the original steering with the avoidance steering
-                    float final_steering = steering + 1f * obstacle_avoiding_steering; // Weighted blend
-
-                    // Apply control input to the car
+                    float final_steering = steering  + avoiding_steering;
                     m_Car.Move(final_steering, acceleration, acceleration, 0f);
-                    //m_Car.Move(steering + obstacle_avoiding_steering, acceleration, acceleration, 0f);
 
                     //When the car is perpendicular to the waypoint, it doesn't know whether to accelerate forwards or backwards so it gets stuck
                     if (!car_is_perpendicular) //We have to check for this
@@ -353,8 +338,9 @@ public class AIP1TrafficCar : MonoBehaviour
                             car_is_perpendicular = true;
                             this.waypoint_margin = 6f;
                             Debug.Log("Car is perpendicular to path");
-                            Debug.Log("angle_to_waypoint = "+angle_to_waypoint);
+                            Debug.Log("angle_to_waypoint = " + angle_to_waypoint);
                         }
+
                     }
                 }
             }
@@ -400,4 +386,6 @@ public class AIP1TrafficCar : MonoBehaviour
 
         return (steering, acceleration);
     }
+
+
 }

@@ -12,7 +12,7 @@ public class Formation
 
     // return a car to follow if one close going in the same direction
     // return null
-    private GameObject LineFormation(Vector3 myPosition, Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars)
+    private CarController LineFormation(Vector3 myPosition, Vector3 myVelocity, CarController my_Car, GameObject[] m_OtherCars)
     {
         GameObject carToFollow = null;
         foreach (var otherCar in m_OtherCars)

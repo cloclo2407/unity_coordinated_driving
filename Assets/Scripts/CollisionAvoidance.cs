@@ -9,7 +9,7 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 public class CollisionAvoidance 
 {
     private float maxTimeToCollision = 10000f; // Change the velocity only if the collision will happen sooner than in maxTimeToCollision
-    private float safetyRadius = 5f; // minimum distance required between the centers of the two cars
+    private float safetyRadius = 100f; // minimum distance required between the centers of the two cars
 
     // Compute safe velocity to avoid collision
     ///////////////////
@@ -68,7 +68,8 @@ public class CollisionAvoidance
     private Vector3 GetSafeVelocity(Vector3 myVelocity, Vector3 deltaPosition, Vector3 deltaVelocity)
     {
         Vector3 rightDirection = new Vector3(-deltaPosition.z, 0, deltaPosition.x).normalized; // Right perpendicular to deltaPosition 
-        Vector3 adjustedDirection = (myVelocity + rightDirection).normalized; 
+        Vector3 adjustedDirection = (myVelocity.normalized + rightDirection * 3f).normalized; 
+        adjustedDirection = adjustedDirection * myVelocity.magnitude;
         return adjustedDirection;
     }
 
