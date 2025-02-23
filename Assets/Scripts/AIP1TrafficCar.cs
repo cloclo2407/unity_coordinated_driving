@@ -258,92 +258,106 @@ public class AIP1TrafficCar : MonoBehaviour
             }*/
 
             //////////////////////////////////////////////////////////////
-            if (smooth_path_of_points.Count != 0 && currentPathIndex < smooth_path_of_points.Count)
+        if (smooth_path_of_points.Count != 0 && currentPathIndex < smooth_path_of_points.Count)
+        {
+            if (!isStuck)
             {
-                if (!isStuck)
+                // Get the car's current forward direction
+                Vector3 forward = transform.forward;
+
+                // Rotate the forward vector by ±30° to get left/right directions for the raycast
+                Vector3 directionRight = Quaternion.Euler(0, -30, 0) * forward;
+                Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * forward;
+
+                Vector3 target_position = smooth_path_of_points[currentPathIndex];
+                Debug.Log("target" + (target_position));
+                target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+                old_target_pos = target_position;
+
+                float distance = Vector3.Distance(target_position, transform.position);
+
+                // Scale k_p and k_d based on distance  between 1 and 10
+                float scaleFactor = Mathf.Clamp(distance / 5f, 2f, 8f);  // Adjust 5f to control sensitivity
+                float k_p_dynamic = Mathf.Lerp(2f, 10f, scaleFactor / 10f);
+                float k_d_dynamic = Mathf.Lerp(2f, 8f, scaleFactor / 8f);
+
+                float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
+                Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
+
+                // a PD-controller to get desired acceleration from errors in position and velocity
+                Vector3 position_error = target_position - transform.position;
+                Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
+                Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
+
+                float steering = Vector3.Dot(desired_acceleration, transform.right);
+                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+
+                Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
+                Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
+                Debug.DrawLine(transform.position, transform.position + desired_acceleration, Color.yellow);
+
+                RaycastHit hitRight;
+                RaycastHit hitLeft;
+                RaycastHit hitStraight;
+                float maxRangeClose = 7f;
+
+                // Cast the ray in world space (no need for TransformDirection)
+                bool obsRighetClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
+                bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
+                bool obsStraightClose = Physics.Raycast(transform.position,
+                    transform.TransformDirection(new Vector3(0, 0, 1)), out hitStraight, maxRangeClose);
+                if (obsRighetClose)
                 {
-                    // Get the car's current forward direction
-                    Vector3 forward = transform.forward;
-
-                    // Rotate the forward vector by ±30° to get left/right directions for the raycast
-                    Vector3 directionRight = Quaternion.Euler(0, -30, 0) * forward;
-                    Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * forward;
-
-                    Vector3 target_position = smooth_path_of_points[currentPathIndex];
-                    Debug.Log("target" + (target_position));
-                    target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-                    old_target_pos = target_position;
-
-                    // a PD-controller to get desired acceleration from errors in position and velocity
-                    Vector3 position_error = target_position - transform.position;
-                    Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
-                    Vector3 desired_acceleration = k_p * position_error + k_d * velocity_error;
-
-                    float steering = Vector3.Dot(desired_acceleration, transform.right);
-                    float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
-
-                    Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
-                    Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
-                    Debug.DrawLine(transform.position, transform.position + desired_acceleration, Color.yellow);
-
-                    RaycastHit hitRight;
-                    RaycastHit hitLeft;
-                    RaycastHit hitStraight;
-                    float maxRangeClose = 7f;
-
-                    // Cast the ray in world space (no need for TransformDirection)
-                    bool obsRighetClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
-                    bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
-                    bool obsStraightClose = Physics.Raycast(transform.position,
-                        transform.TransformDirection(new Vector3(0, 0, 1)), out hitStraight, maxRangeClose);
-                    if (obsRighetClose)
-                    {
-                        Vector3 closestObstacle = directionRight * hitRight.distance;
-                        Debug.DrawRay(transform.position, closestObstacle, Color.green);
-                        Debug.Log("Did Hit Right");
-                        steering += 10;
-                    }
-
-                    if (obsLeftClose)
-                    {
-                        Vector3 closestObstacle = directionLeft * hitLeft.distance;
-                        Debug.DrawRay(transform.position, closestObstacle, Color.green);
-                        Debug.Log("Did Hit Left");
-                        steering -= 10;
-                    }
-
-                    // this is how you control the car
-                    //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
-                    m_Car.Move(steering, acceleration, acceleration, 0f);
-
-                    float distToPoint = 6;
-
-                    Debug.Log("dist" + Vector3.Distance(target_position, transform.position));
-                    if (Vector3.Distance(target_position, transform.position) < distToPoint)
-                    {
-                        checkNewPoint = true;
-                        currentPathIndex++;
-                    }
-
-                    if (my_rigidbody.linearVelocity.magnitude < 0.05 && (obsStraightClose || obsRighetClose || obsLeftClose))
-                    {
-                        isStuck = true;
-                    }
-
+                    Vector3 closestObstacle = directionRight * hitRight.distance;
+                    Debug.DrawRay(transform.position, closestObstacle, Color.green);
+                    Debug.Log("Did Hit Right");
+                    steering += 10;
                 }
-                else
+
+                if (obsLeftClose)
                 {
-                    m_Car.Move(0f, 0f, -1f, 0f);
-                    reverseDuration += Time.deltaTime;
-                    if (reverseDuration > 1f)
-                    {
-                        isStuck = false;
-                        reverseDuration = 0f;
-                    }
-
+                    Vector3 closestObstacle = directionLeft * hitLeft.distance;
+                    Debug.DrawRay(transform.position, closestObstacle, Color.green);
+                    Debug.Log("Did Hit Left");
+                    steering -= 10;
                 }
+
+                // this is how you control the car
+                //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
+                m_Car.Move(steering, acceleration, acceleration, 0f);
+
+                float distToPoint = 6;
+                if (currentPathIndex == smooth_path_of_points.Count()-1)
+                {
+                    distToPoint = 1;
+                }
+
+                Debug.Log("dist" + Vector3.Distance(target_position, transform.position));
+                if (Vector3.Distance(target_position, transform.position) < distToPoint)
+                {
+                    checkNewPoint = true;
+                    currentPathIndex++;
+                }
+
+                if (my_rigidbody.linearVelocity.magnitude < 0.05 && (obsStraightClose || obsRighetClose || obsLeftClose))
+                {
+                    isStuck = true;
+                }
+
+            }
+            else
+            {
+                m_Car.Move(0f, 0f, -1f, 0f);
+                reverseDuration += Time.deltaTime;
+                if (reverseDuration > 1f)
+                {
+                    isStuck = false;
+                    reverseDuration = 0f;
+                }
+
             }
         }
+    }
    // }
 
     private (float steering, float acceleration) ControlsTowardsPoint(Vector3 avg_pos)
