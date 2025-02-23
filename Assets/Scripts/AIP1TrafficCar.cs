@@ -253,7 +253,13 @@ public class AIP1TrafficCar : MonoBehaviour
             bool obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
             bool obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
 
-
+            // Draw Raycasts in Blue
+            Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
+            Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
+            Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
+            Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
+            Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
+            Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue);
 
             if (!isStuck)
             {
@@ -281,22 +287,18 @@ public class AIP1TrafficCar : MonoBehaviour
                 float steering = Vector3.Dot(desired_acceleration, transform.right);
                 float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
 
-                Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
+                //Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
                 //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
                 Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized*5, Color.yellow);
 
                 
                 if (obsRighetClose)
                 {
-                    Vector3 closestObstacle = directionRight * hitRight.distance;
-                    Debug.DrawRay(transform.position, closestObstacle, Color.green);
                     steering += 10;
                 }
 
                 if (obsLeftClose)
                 {
-                    Vector3 closestObstacle = directionLeft * hitLeft.distance;
-                    Debug.DrawRay(transform.position, closestObstacle, Color.green);
                     steering -= 10;
                 }
 
@@ -316,11 +318,14 @@ public class AIP1TrafficCar : MonoBehaviour
                     currentPathIndex++;
                 }
 
-                if (my_rigidbody.linearVelocity.magnitude < 0.1 && currentPathIndex > 1 && (obsStraightClose || obsRighetClose || obsLeftClose || obsBackClose || obsBackLeftClose || obsBackRightClose))
+                if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1 /*&& (obsStraightClose || obsRighetClose || obsLeftClose || obsBackClose || obsBackLeftClose || obsBackRightClose)*/)
                 {
     
-                    isStuck = true;
-                    timeStuck = 4;
+                    timeStuck +=1;
+                    if (timeStuck > 50)
+                    {
+                        isStuck = true;
+                    }
                     
                 }
 
@@ -330,12 +335,12 @@ public class AIP1TrafficCar : MonoBehaviour
 
                 if (obsStraightClose || obsRighetClose || obsLeftClose)
                 {
-                    m_Car.Move(0f, -30f, -30f, 0f);                
+                    m_Car.Move(0f, -100f, -100f, 0f);                
                 }
 
                 else
                 {
-                    m_Car.Move(0f, 30f, 30f, 0f);
+                    m_Car.Move(0f, 100f, 100f, 0f);
                 }
                 reverseDuration += Time.deltaTime;
                 //if (reverseDuration > 2f)
