@@ -37,6 +37,7 @@ public class AIP1TrafficCar : MonoBehaviour
     public float k_p = 1f;
     public float k_d = 2f; 
     private bool isStuck = false;
+    private int timeStuck = 0;
     private float reverseDuration = 0;
     private bool checkNewPoint = true;
 
@@ -224,14 +225,39 @@ public class AIP1TrafficCar : MonoBehaviour
             //////////////////////////////////////////////////////////////
         if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count)
         {
+            // Get the car's current forward direction
+            Vector3 forward = transform.forward;
+
+            // Rotate the forward vector by ±30° to get left/right directions for the raycast
+            Vector3 directionRight = Quaternion.Euler(0, -30, 0) * forward;
+            Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * forward;
+            Vector3 directionBackLeft = Quaternion.Euler(0, 150, 0) * forward;
+            Vector3 directionBackRight = Quaternion.Euler(0, -150, 0) * forward;
+            Vector3 directionBack = Quaternion.Euler(0, 180, 0) * forward;
+
+
+            RaycastHit hitRight;
+            RaycastHit hitLeft;
+            RaycastHit hitStraight;
+            RaycastHit hitBackRight;
+            RaycastHit hitBackLeft;
+            RaycastHit hitBack;
+            float maxRangeClose = 7f;
+
+            // Cast the ray in world space (no need for TransformDirection)
+            bool obsRighetClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
+            bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
+            bool obsStraightClose = Physics.Raycast(transform.position,
+                transform.TransformDirection(new Vector3(0, 0, 1)), out hitStraight, maxRangeClose);
+            bool obsBackRightClose = Physics.Raycast(transform.position, directionBackRight, out hitBackRight, maxRangeClose);
+            bool obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
+            bool obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
+
+
+
             if (!isStuck)
             {
-                // Get the car's current forward direction
-                Vector3 forward = transform.forward;
-
-                // Rotate the forward vector by ±30° to get left/right directions for the raycast
-                Vector3 directionRight = Quaternion.Euler(0, -30, 0) * forward;
-                Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * forward;
+                
 
                 Vector3 target_position = path_of_points[currentPathIndex];
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
@@ -256,24 +282,14 @@ public class AIP1TrafficCar : MonoBehaviour
                 float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
 
                 Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
-                Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
-                Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized, Color.yellow);
+                //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
+                Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized*5, Color.yellow);
 
-                RaycastHit hitRight;
-                RaycastHit hitLeft;
-                RaycastHit hitStraight;
-                float maxRangeClose = 7f;
-
-                // Cast the ray in world space (no need for TransformDirection)
-                bool obsRighetClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
-                bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
-                bool obsStraightClose = Physics.Raycast(transform.position,
-                    transform.TransformDirection(new Vector3(0, 0, 1)), out hitStraight, maxRangeClose);
+                
                 if (obsRighetClose)
                 {
                     Vector3 closestObstacle = directionRight * hitRight.distance;
                     Debug.DrawRay(transform.position, closestObstacle, Color.green);
-                    Debug.Log("Did Hit Right");
                     steering += 10;
                 }
 
@@ -281,7 +297,6 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
                     Vector3 closestObstacle = directionLeft * hitLeft.distance;
                     Debug.DrawRay(transform.position, closestObstacle, Color.green);
-                    Debug.Log("Did Hit Left");
                     steering -= 10;
                 }
 
@@ -301,20 +316,36 @@ public class AIP1TrafficCar : MonoBehaviour
                     currentPathIndex++;
                 }
 
-                if (my_rigidbody.linearVelocity.magnitude < 0.05 && (obsStraightClose || obsRighetClose || obsLeftClose))
+                if (my_rigidbody.linearVelocity.magnitude < 0.1 && currentPathIndex > 1 && (obsStraightClose || obsRighetClose || obsLeftClose || obsBackClose || obsBackLeftClose || obsBackRightClose))
                 {
+    
                     isStuck = true;
+                    timeStuck = 4;
+                    
                 }
 
             }
             else
             {
-                m_Car.Move(0f, 0f, -1f, 0f);
-                reverseDuration += Time.deltaTime;
-                if (reverseDuration > 1f)
+
+                if (obsStraightClose || obsRighetClose || obsLeftClose)
                 {
-                    isStuck = false;
+                    m_Car.Move(0f, -30f, -30f, 0f);                
+                }
+
+                else
+                {
+                    m_Car.Move(0f, 30f, 30f, 0f);
+                }
+                reverseDuration += Time.deltaTime;
+                //if (reverseDuration > 2f)
+                {
+                    timeStuck -=1 ;
                     reverseDuration = 0f;
+                    if (timeStuck == 0)
+                    {
+                        isStuck = false;
+                    }
                 }
 
             }
