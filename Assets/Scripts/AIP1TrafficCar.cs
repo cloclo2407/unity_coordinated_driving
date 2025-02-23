@@ -134,6 +134,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         //////////////////////////Catmull-Rom:
         SmoothSplineCatmullRom(path_of_points, 5);
+        smooth_path_of_points = simplifyPath(smooth_path_of_points, 0.1f);
         //for (int j = 0; j < smooth_path_of_points.Count-1; j++)
         //{ Debug.DrawLine(smooth_path_of_points[j] + Vector3.up, smooth_path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
@@ -180,6 +181,58 @@ public class AIP1TrafficCar : MonoBehaviour
         Vector3 d = -p0 + 3f * p1 - 3f * p2 + p3;
         return 0.5f * (a + (b * t) + (c * t * t) + (d * t * t * t));
     }
+
+    public List<Vector3> simplifyPath(List<Vector3> path, float epsilon) //use Ramer-Douglas-Peucker
+    {
+        if (path == null || path.Count < 3)
+            return path;
+
+        List<Vector3> simplifiedPath = new List<Vector3>();
+        simplifiedPath.Add(path[0]);
+        simplifyRecursive(path, 0, path.Count - 1, epsilon, simplifiedPath);
+        simplifiedPath.Add(path[path.Count - 1]); // add last point
+
+        return simplifiedPath;
+    }
+
+    private void simplifyRecursive(List<Vector3> path, int startIndex, int endIndex, float epsilon, List<Vector3> new_path)
+    {
+        if (endIndex <= startIndex + 1) // can't simplify two points
+            return;
+
+        float maxDistance = 0;
+        int indexFurthest = 0;
+
+        Vector3 startPoint = path[startIndex];
+        Vector3 endPoint = path[endIndex];
+
+        // Find the point farthest from the line segment
+        for (int i = startIndex + 1; i < endIndex; i++)
+        {
+            float distance = perpendicularDistance(path[i], startPoint, endPoint);
+            if (distance > maxDistance)
+            {
+                maxDistance = distance;
+                indexFurthest = i;
+            }
+        }
+
+        if (maxDistance > epsilon) // if points too far from line, keep it
+        {
+            simplifyRecursive(path, startIndex, indexFurthest, epsilon, new_path); // simplify first part of the segment
+            new_path.Add(path[indexFurthest]); // add the point
+            simplifyRecursive(path, indexFurthest, endIndex, epsilon, new_path); // simplify second part of the segment
+        }
+    }
+
+    private float perpendicularDistance(Vector3 point, Vector3 lineStart, Vector3 lineEnd) // get distance from point to line
+    {
+        Vector3 line = lineEnd - lineStart;
+        Vector3 projection = Vector3.Project(point - lineStart, line);
+        Vector3 closestPoint = lineStart + projection;
+        return Vector3.Distance(point, closestPoint);
+    }
+
 
     /*
     private void Update()
@@ -358,7 +411,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
         }
     }
-   // }
+
 
     private (float steering, float acceleration) ControlsTowardsPoint(Vector3 avg_pos)
     {
