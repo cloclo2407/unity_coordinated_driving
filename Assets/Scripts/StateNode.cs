@@ -1,19 +1,14 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using Scripts.Vehicle;
 using Scripts.Map;
-using Imported.StandardAssets.Vehicles.Car.Scripts;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
-using UnityEngine.UIElements;
 
 public class StateNode : IComparable<StateNode> { 
     //Inherits from IComparable<StateNode> in order to be able to compare two StateNodes, see CompareTo() method below.
     //StateNode-objects are used to keep track of states/ nodes/ positions we visit while constructing a path
     public Vector3 world_position; //other way of saying global_position
     public float orientation; //Orientation around y-axis at this node, in degrees. Remember Unity uses left-handed coord. sys.
+    public Vector3 goal_world_position;
     public Vector3Int cell_position;
     public StateNode parent_node;
     public float cost_to_come;
@@ -21,6 +16,10 @@ public class StateNode : IComparable<StateNode> {
     //public float turning_penalty;                                   
     public float close_to_obstacle_penalty; //High penalty to stay
     public float combined_cost;             //away from walls
+    // Implementing a hashset (dictionary with only keys) for keeping track of all visited nodes by all runs of A* for all cars
+    // This is intended to make A* choose less overlapping paths for different cars, used as reason for added cost (penalty).
+    public static HashSet<Vector3Int> used_waypoints = new HashSet<Vector3Int>();
+    //public float close_to_used_wp_penalty; //add penalty for being close to used waypoint in other run of A*
 
     public int CompareTo(StateNode other)   //Call to use this method may look like: current_node.CompareTo(child_node)
     {                                                           //returns -1 if this.combined_cost < other.combined_cost
@@ -40,24 +39,23 @@ public class StateNode : IComparable<StateNode> {
     */
     
     //Constructor method:
-    public StateNode(Vector3 world_position, float orientation, StateNode parent_node, MapManager mapManager, ObstacleMap obstacleMap)
+    public StateNode(Vector3 world_position, float orientation, Vector3 goal_world_position, StateNode parent_node, MapManager mapManager, ObstacleMap obstacleMap)
     {
         //this.local_position = local_position;
         this.world_position = world_position;
         this.orientation = orientation;
+        this.goal_world_position = goal_world_position;
         this.cell_position = obstacleMap.WorldToCell(world_position);
         this.parent_node = parent_node;
         this.cost_to_come = calculateCostToCome(); //setting cost_to_come = number of parent nodes
-
-        var goal_world_pos = mapManager.GetGlobalGoalPosition();
         // Vector3 has x,y,z-components of type float. Math.Pow() takes doubles and returns double. Math.Sqrt() takes double and returns double.
         // (float) converts the double returned by the Math functions to float.
-        float euclidean_distance_to_goal = (float)( Math.Sqrt(  Math.Pow(goal_world_pos.x - this.world_position.x, 2d) + Math.Pow(goal_world_pos.z - this.world_position.z, 2d)  ) );
-        float weighted_euclidean_distance = euclidean_distance_to_goal * 0.2f; //If weight>1 A* prioritises sticking closer to goal, if weight<1 A* prioritises it less
+        float euclidean_distance_to_goal = (float)( Math.Sqrt(  Math.Pow(goal_world_position.x - this.world_position.x, 2d) + Math.Pow(goal_world_position.z - this.world_position.z, 2d)  ) );
+        //float weighted_euclidean_distance = euclidean_distance_to_goal * 0.2f; //If weight>1 A* prioritises sticking closer to goal, if weight<1 A* prioritises it less
         //float manhattan_distance_to_goal = Mathf.Abs(goal_world_pos.x - world_position.x) + Mathf.Abs(goal_world_pos.z - world_position.z);
         //float chebyshev_distance_to_goal = Mathf.Max(Mathf.Abs(goal_world_pos.x - world_position.x), Mathf.Abs(goal_world_pos.z - world_position.z));
         //float dijkstra_distance_to_goal = 0;
-        this.cost_to_go = weighted_euclidean_distance;
+        this.cost_to_go = euclidean_distance_to_goal;
         
         //Calculate turning penalty based on orientation of this and parent_node
         /*
@@ -69,8 +67,13 @@ public class StateNode : IComparable<StateNode> {
         { this.turning_penalty = 0f; }
         */
         
+        //For calculating close_to_used_wp_penalty I need to check the distance to closest used waypoint.
+        // How can I, given a Vector3Int check which Vector3Int in my hashset is closest and retrieve that Vector3Int?
+        // Sounds slightly computationally expensive to me :l
+        
+        //this.close_to_used_wp_penalty = (used_waypoints.Contains(cell_position) ? 10f : 0f); //If reused waypoint, cost+=10
         this.close_to_obstacle_penalty = calculatePenalty(obstacleMap);
-        this.combined_cost = this.cost_to_come + this.cost_to_go + this.close_to_obstacle_penalty; //+ turning_penalty;
+        this.combined_cost = this.cost_to_come + this.cost_to_go + this.close_to_obstacle_penalty; //+ this.close_to_used_wp_penalty; //+ turning_penalty;
     }
 
     private float calculateCostToCome()
@@ -82,7 +85,7 @@ public class StateNode : IComparable<StateNode> {
             parentcounter++;
             current = current.parent_node; //point current at parent to check the parent of parent
         }
-        return cost_to_come = parentcounter;
+        return parentcounter;
     }
     
     private float calculatePenalty(ObstacleMap obstacleMap)
@@ -261,7 +264,7 @@ public class StateNode : IComparable<StateNode> {
         {
             var new_position = this.world_position + valid_movement.Item1;
             var new_orientation = valid_movement.Item2;
-            StateNode new_node = new StateNode(new_position, new_orientation, this, mapManager, obstacleMap);
+            StateNode new_node = new StateNode(new_position, new_orientation, this.goal_world_position, this, mapManager, obstacleMap);
             
             //I want to draw out all positions we visit to get a feel of how A* explores the space:
             //Debug.DrawLine(this.world_position, new_position, Color.green, 1000f);
@@ -273,10 +276,6 @@ public class StateNode : IComparable<StateNode> {
             foreach (StateNode sn in Q) { if (sn.cell_position == new_node.cell_position)
             { prev_node_in_Q = sn;
                 break; } }
-
-            /* foreach (StateNode s_n in visited_nodes) { if (s_n.cell_position == new_node.cell_position) 
-            { prev_node_in_visited_nodes = s_n; 
-                break; } } */
 
             if (visited_nodes.TryGetValue(new_node.cell_position, out StateNode existing_node)) //TryGetValue returns true if value exists at given key, false otherwise
             { prev_node_in_visited_nodes = existing_node; }
@@ -296,7 +295,7 @@ public class StateNode : IComparable<StateNode> {
                     prev_node_in_Q.cost_to_go = new_node.cost_to_go;
                     //prev_node_in_Q.turning_penalty = new_node.turning_penalty;
                     prev_node_in_Q.combined_cost = prev_node_in_Q.cost_to_come + prev_node_in_Q.cost_to_go +
-                                                   prev_node_in_Q.close_to_obstacle_penalty; // + prev_node_in_Q.turning_penalty;
+                                                   prev_node_in_Q.close_to_obstacle_penalty; //+ prev_node_in_Q.close_to_used_wp_penalty; // + prev_node_in_Q.turning_penalty;
                 }
             }
             
@@ -314,8 +313,7 @@ public class StateNode : IComparable<StateNode> {
                     //prev_node_in_visited_nodes.turning_penalty = new_node.turning_penalty;
                     prev_node_in_visited_nodes.combined_cost = prev_node_in_visited_nodes.cost_to_come +
                                                                prev_node_in_visited_nodes.cost_to_go +
-                                                               prev_node_in_visited_nodes.close_to_obstacle_penalty; // + prev_node_in_visited_nodes.turning_penalty;
-                    //Q.Add(prev_node_in_visited_nodes);
+                                                               prev_node_in_visited_nodes.close_to_obstacle_penalty; // + prev_node_in_visited_nodes.close_to_used_wp_penalty; // + prev_node_in_visited_nodes.turning_penalty;
                     Q.Enqueue(prev_node_in_visited_nodes); 
                     // Since we are adding the node back to Q, we should remove it from visited_nodes dict so that it can be added to the dict
                     // in CarAI.cs when expanding the popped node from Q. It's either this or add a check with .ContainsKey() over there 
