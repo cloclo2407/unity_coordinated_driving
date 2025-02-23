@@ -331,8 +331,8 @@ public class AIP1TrafficCar : MonoBehaviour
 
                 // Scale k_p and k_d based on distance  between 1 and 10
                 float scaleFactor = Mathf.Clamp(distance / 5f, 2f, 8f);  // Adjust 5f to control sensitivity
-                float k_p_dynamic = Mathf.Lerp(2f, 10f, scaleFactor / 10f);
-                float k_d_dynamic = Mathf.Lerp(2f, 8f, scaleFactor / 8f);
+                float k_p_dynamic = Mathf.Lerp(2f, 5f, scaleFactor / 5f);
+                float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
 
                 float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
                 Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
@@ -347,7 +347,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
                 Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
                 Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
-                Debug.DrawLine(transform.position, transform.position + desired_acceleration, Color.yellow);
+                Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized, Color.yellow);
 
                 RaycastHit hitRight;
                 RaycastHit hitLeft;
