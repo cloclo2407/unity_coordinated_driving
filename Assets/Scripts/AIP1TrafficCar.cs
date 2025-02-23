@@ -244,7 +244,7 @@ public class AIP1TrafficCar : MonoBehaviour
             RaycastHit hitBack;
             float maxRangeClose = 7f;
 
-            // Cast the ray in world space (no need for TransformDirection)
+            // Cast the ray in world space (6 ray cast in front,back and diagonals)
             bool obsRighetClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
             bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
             bool obsStraightClose = Physics.Raycast(transform.position,
@@ -263,8 +263,6 @@ public class AIP1TrafficCar : MonoBehaviour
 
             if (!isStuck)
             {
-                
-
                 Vector3 target_position = path_of_points[currentPathIndex];
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
                 old_target_pos = target_position;
@@ -291,13 +289,22 @@ public class AIP1TrafficCar : MonoBehaviour
                 //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
                 Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized*5, Color.yellow);
 
-                
+                // Turn if you're too close to an obstacle
                 if (obsRighetClose)
                 {
                     steering += 10;
                 }
 
                 if (obsLeftClose)
+                {
+                    steering -= 10;
+                }
+                if (obsBackRightClose)
+                {
+                    steering += 10;
+                }
+
+                if (obsBackLeftClose)
                 {
                     steering -= 10;
                 }
@@ -318,11 +325,11 @@ public class AIP1TrafficCar : MonoBehaviour
                     currentPathIndex++;
                 }
 
-                if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1 /*&& (obsStraightClose || obsRighetClose || obsLeftClose || obsBackClose || obsBackLeftClose || obsBackRightClose)*/)
+                 // If you're barely moving it means you're stuck
+                if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1 )
                 {
-    
                     timeStuck +=1;
-                    if (timeStuck > 50)
+                    if (timeStuck > 70) // If you're not moving for too long you're stuck
                     {
                         isStuck = true;
                     }
@@ -332,27 +339,22 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             else
             {
-
-                if (obsStraightClose || obsRighetClose || obsLeftClose)
+                // If you have an obstacle behind you go forward
+                if (obsBackClose || obsBackRightClose || obsBackLeftClose)
                 {
-                    m_Car.Move(0f, -100f, -100f, 0f);                
+                    m_Car.Move(0f, 100f, 100f, 0f);                
                 }
 
-                else
+                else //go backwards
                 {
-                    m_Car.Move(0f, 100f, 100f, 0f);
+                    m_Car.Move(0f, -100f, -100f, 0f);
                 }
-                reverseDuration += Time.deltaTime;
-                //if (reverseDuration > 2f)
+                
+                timeStuck -=1 ;
+                if (timeStuck == 0)
                 {
-                    timeStuck -=1 ;
-                    reverseDuration = 0f;
-                    if (timeStuck == 0)
-                    {
-                        isStuck = false;
-                    }
+                    isStuck = false;
                 }
-
             }
         }
     }
