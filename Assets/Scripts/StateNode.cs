@@ -8,7 +8,6 @@ public class StateNode : IComparable<StateNode> {
     //StateNode-objects are used to keep track of states/ nodes/ positions we visit while constructing a path
     public Vector3 world_position; //other way of saying global_position
     public float orientation; //Orientation around y-axis at this node, in degrees. Remember Unity uses left-handed coord. sys.
-    public Vector3 goal_world_position;
     public Vector3Int cell_position;
     public StateNode parent_node;
     public float cost_to_come;
@@ -39,18 +38,18 @@ public class StateNode : IComparable<StateNode> {
     */
     
     //Constructor method:
-    public StateNode(Vector3 world_position, float orientation, Vector3 goal_world_position, StateNode parent_node, MapManager mapManager, ObstacleMap obstacleMap)
+    public StateNode(Vector3 world_position, float orientation, Vector3 goal_world_pos, StateNode parent_node, MapManager mapManager, ObstacleMap obstacleMap)
     {
         //this.local_position = local_position;
         this.world_position = world_position;
         this.orientation = orientation;
-        this.goal_world_position = goal_world_position;
+        //this.goal_world_position = goal_world_position;
         this.cell_position = obstacleMap.WorldToCell(world_position);
         this.parent_node = parent_node;
         this.cost_to_come = calculateCostToCome(); //setting cost_to_come = number of parent nodes
         // Vector3 has x,y,z-components of type float. Math.Pow() takes doubles and returns double. Math.Sqrt() takes double and returns double.
         // (float) converts the double returned by the Math functions to float.
-        float euclidean_distance_to_goal = (float)( Math.Sqrt(  Math.Pow(goal_world_position.x - this.world_position.x, 2d) + Math.Pow(goal_world_position.z - this.world_position.z, 2d)  ) );
+        float euclidean_distance_to_goal = (float)( Math.Sqrt(  Math.Pow(goal_world_pos.x - this.world_position.x, 2d) + Math.Pow(goal_world_pos.z - this.world_position.z, 2d)  ) );
         //float weighted_euclidean_distance = euclidean_distance_to_goal * 0.2f; //If weight>1 A* prioritises sticking closer to goal, if weight<1 A* prioritises it less
         //float manhattan_distance_to_goal = Mathf.Abs(goal_world_pos.x - world_position.x) + Mathf.Abs(goal_world_pos.z - world_position.z);
         //float chebyshev_distance_to_goal = Mathf.Max(Mathf.Abs(goal_world_pos.x - world_position.x), Mathf.Abs(goal_world_pos.z - world_position.z));
@@ -125,7 +124,7 @@ public class StateNode : IComparable<StateNode> {
         return unoccupied_cells;
     }
 
-    public List<StateNode> makeChildNodes(Dictionary<Vector3Int, StateNode> visited_nodes, PriorityQueue Q, MapManager mapManager, ObstacleMap obstacleMap, float cellength, String vehicle)
+    public List<StateNode> makeChildNodes(Dictionary<Vector3Int, StateNode> visited_nodes, PriorityQueue Q, Vector3 global_goal_pos, MapManager mapManager, ObstacleMap obstacleMap, float cellength, String vehicle)
     { // Returns list of childnodes that point to this, the parent node
         List<StateNode> childnodes_list = new List<StateNode>();
 
@@ -264,7 +263,7 @@ public class StateNode : IComparable<StateNode> {
         {
             var new_position = this.world_position + valid_movement.Item1;
             var new_orientation = valid_movement.Item2;
-            StateNode new_node = new StateNode(new_position, new_orientation, this.goal_world_position, this, mapManager, obstacleMap);
+            StateNode new_node = new StateNode(new_position, new_orientation, global_goal_pos, this, mapManager, obstacleMap);
             
             //I want to draw out all positions we visit to get a feel of how A* explores the space:
             //Debug.DrawLine(this.world_position, new_position, Color.green, 1000f);
