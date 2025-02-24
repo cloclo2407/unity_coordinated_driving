@@ -2,13 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using Scripts.Map;
-<<<<<<< HEAD
 using Imported.StandardAssets.Vehicles.Car.Scripts;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
-=======
->>>>>>> pd_tracker
 
 public class StateNode : IComparable<StateNode> { 
     //Inherits from IComparable<StateNode> in order to be able to compare two StateNodes, see CompareTo() method below.
