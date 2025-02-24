@@ -280,6 +280,13 @@ public class AIP1TrafficCar : MonoBehaviour
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
                 old_target_pos = target_position;
 
+                GameObject carToFollow = m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+                if (carToFollow != null)
+                {
+                    target_position = carToFollow.transform.position;
+                    target_velocity = carToFollow.GetComponent<CarController>().GetComponent<Rigidbody>().linearVelocity;
+                }
+
                 float distance = Vector3.Distance(target_position, transform.position);
 
                 // Scale k_p and k_d based on distance  between 1 and 10
@@ -314,13 +321,13 @@ public class AIP1TrafficCar : MonoBehaviour
                 }
                 if (obsBackRightClose)
                 {
-                    steering += 10;
+                    steering -= 10;
                 }
 
 
                 if (obsBackLeftClose)
                 {
-                    steering -= 10;
+                    steering += 10;
                 }
 
                 // this is how you control the car
