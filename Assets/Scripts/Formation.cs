@@ -12,7 +12,7 @@ public class Formation
 
     // return a car to follow if one close going in the same direction
     // return null
-    public GameObject LineFormation(CarController my_Car, GameObject[] m_OtherCars)
+    public GameObject LineFormation(CarController my_Car, GameObject[] m_OtherCars, Vector3 target_position)
     {
         GameObject carToFollow = null;
         foreach (var otherCar in m_OtherCars)
@@ -24,7 +24,7 @@ public class Formation
             AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
 
 
-            if (!otherCarScript.IsBeingFollowed && CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity))
+            if (!otherCarScript.IsBeingFollowed && CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity, target_position))
             {
                 carToFollow = otherCar;
                 otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
@@ -35,13 +35,15 @@ public class Formation
     }
 
     // return true if the other car is in front of my car and their directions are similar and their velocity are similar
-    private bool CanBeFollowed (Vector3 myPosition, Vector3 myVelocity, Vector3 otherPosition, Vector3 otherVelocity)
+    // Suppressed velocity for now
+    private bool CanBeFollowed (Vector3 myPosition, Vector3 myVelocity, Vector3 otherPosition, Vector3 otherVelocity, Vector3 target_position)
     {
         Vector3 deltaPosition = otherPosition - myPosition;
         float deltaVelocity = (otherVelocity - myVelocity).magnitude;
         float behind = Vector3.Dot(deltaPosition, otherVelocity);
-        float sameDirection = Vector3.Dot(myVelocity.normalized, otherVelocity.normalized);
-        if (behind > 0 && sameDirection > minSameDirection && deltaVelocity < maxDeltaVelocity && deltaPosition.magnitude < 10f)
+        Vector3 my_direction = target_position - myPosition;
+        float sameDirection = Vector3.Dot(my_direction.normalized, otherVelocity.normalized);
+        if (behind > 0 && sameDirection > minSameDirection  && deltaPosition.magnitude < 10f)
         {
             return true;
         }

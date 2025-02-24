@@ -197,7 +197,7 @@ public class AIP1TrafficCar : MonoBehaviour
             var target_position = smooth_path_of_points[1];                           
             Vector3 target_velocity = (target_position - old_target_position) / Time.fixedDeltaTime;
 
-            GameObject carToFollow = m_Formation.LineFormation(m_Car, m_OtherCars);
+            GameObject carToFollow = m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
             if (carToFollow != null)
             {
                 target_position = carToFollow.transform.position;
