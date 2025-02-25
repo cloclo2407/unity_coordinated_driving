@@ -310,24 +310,28 @@ public class AIP1TrafficCar : MonoBehaviour
                 Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized*5, Color.yellow);
 
                 // Turn if you're too close to an obstacle
-                if (obsRighetClose)
+                if (acceleration > 0)
                 {
-                    steering += 10;
+                    if (obsLeftClose)
+                    {
+                        steering -= 10;
+                    }
+                    else if (obsRighetClose)
+                    {
+                        steering += 10;
+                    }
                 }
 
-                if (obsLeftClose)
+                else
                 {
-                    steering -= 10;
-                }
-                if (obsBackRightClose)
-                {
-                    steering -= 10;
-                }
-
-
-                if (obsBackLeftClose)
-                {
-                    steering += 10;
+                    if (obsBackLeftClose)
+                    {
+                        steering += 10;
+                    }
+                    else if (obsBackRightClose)
+                    {
+                        steering -= 10;
+                    }
                 }
 
                 // this is how you control the car
