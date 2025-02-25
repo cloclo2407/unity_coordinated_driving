@@ -45,6 +45,8 @@ public class AIP1TrafficCar : MonoBehaviour
     public bool drawTargets;
     public bool drawAllCars;
     public bool drawTeamCars;
+    
+    //Here is a new comment, wowowowo
 
     //For driving:
     private float waypoint_margin = 3f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
