@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
@@ -70,6 +71,8 @@ public class AIP1TrafficCar : MonoBehaviour
     //ORCA-parameters:
     private float neighbor_radius = 16f;
     private List<GameObject> neighbor_agents = new List<GameObject>();
+    private float timeHorizon = 100f; //tau in the report
+    private List<Tuple<Vector3, Vector3>> orca_constraints = new List<Tuple<Vector3, Vector3>>();
 
     private void Start()
     {
@@ -204,9 +207,50 @@ public class AIP1TrafficCar : MonoBehaviour
 
     private void EvadeCollisionWithORCA()
     {
-        //TODO
-        //TODO
-        //TODO
+        orca_constraints.Clear(); //Reset ORCA constraints
+        Vector3 v_A = my_rigidbody.linearVelocity; //Let this be agent A and other be agent B
+        Vector3 pos_A = transform.position;
+        float car_radius = 2.2f; //We approximate the car as a circular robot with radius 2.2 based on the prefab model
+        
+        foreach (GameObject other_agent in neighbor_agents)
+        {
+            //Check if we are on collision course with other agent. Compute and store constraint if that is the case.
+            var rigidbody_B = other_agent.GetComponent<Rigidbody>();
+            Vector3 v_B = rigidbody_B.linearVelocity;
+            Vector3 pos_B = other_agent.transform.position;
+            Vector3 relative_velocity = (v_A - v_B);        //Is this the correct way of calculating relative_vel
+            Vector3 relative_position = (pos_B - pos_A);    // and relative_pos?
+
+            float theta = Mathf.Asin((car_radius+car_radius) / relative_position.magnitude); //Angle defining if relative_vel is in velocity obstacle
+            Vector3 max_considered_velocity = relative_velocity + relative_position / timeHorizon;
+            
+            float relative_vectors_signed_angle = Vector3.SignedAngle(relative_position, relative_velocity, Vector3.up);
+            //angle <0 means relative_vel is rotated counterclockwise from relative_pos by angle degrees
+            //angle >0 means relative_vel is rotated clockwise from relative_pos by angle degrees
+            
+            if (Mathf.Abs(relative_vectors_signed_angle) < theta && relative_velocity.magnitude < max_considered_velocity.magnitude)
+            {
+                //We have a collision to avoid. Let's compute and store the constraint for the new velocity
+                //TODO
+                //More vector calculations...
+                //TODO
+                //Tuple<Vector3, Vector3> constraint = new Tuple<Vector3, Vector3>(constraint_point, constraint_normal)
+                //orca_constraints.Add(constraint)
+            }
+        }
+
+        if (orca_constraints.Count() > 0) //We have a Linear Programming problem to solve
+        {
+            //TODO
+            //Try out the LP solver from ALGLIB for C#
+            //TODO
+            //What form does ALGLIB want its constraints to have?
+        }
+        
+        else //No constraints, all agents in the neighborhood give relative velocities that will not lead to collisions
+        {
+            DriveAndRecover(); //follow path, recover if stuck
+        }        
     }
 
     private void UpdateNeighboringAgents()
