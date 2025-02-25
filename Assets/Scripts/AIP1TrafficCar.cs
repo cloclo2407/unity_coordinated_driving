@@ -5,6 +5,7 @@ using FormationGame;
 using Imported.StandardAssets.Vehicles.Car.Scripts;
 using Scripts.Map;
 using Scripts.Game;
+using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
@@ -65,6 +66,10 @@ public class AIP1TrafficCar : MonoBehaviour
     public float acceleration;
     public List<GameObject> targetObjects;
     public List<GameObject> teamVehicles;
+    
+    //ORCA-parameters:
+    private float neighbor_radius = 16f;
+    private List<GameObject> neighbor_agents = new List<GameObject>();
 
     private void Start()
     {
@@ -181,183 +186,137 @@ public class AIP1TrafficCar : MonoBehaviour
 
     private void FixedUpdate()
     {   // Feel free to refer to any examples from previous assignments.
-        /*
- 
-            //Dynamic obstacle avoidance with RAYCASTS
-            raycast_hit_positions.Clear();
-            float scan_distance;
-            //I'm working with a droplet-shape of rays. I want the front rays to be longer than the ones on the sides of the car.
-            //Mapping function f(x) = 1-abs(x)/45. x is our angle i, f(x) is our scan distance.
-            for (float i = -80f; i <= 80f; i += 5f)
-            {
-                // 90/5=18 rays
-                scan_distance = max_scan_distance - max_scan_distance * (Mathf.Abs(i) / 80f);
-                Vector3 direction_i =
-                    Vector3.Normalize(Quaternion.Euler(0, i, 0) *
-                                      transform
-                                          .forward); //Quat.Euler(0,i,0)*transf.fwd rotates transf.fwd i degrees around y-axis
-                Debug.DrawLine(transform.position, transform.position + (direction_i * scan_distance), Color.blue);
-                RaycastHit hit_object; //declare hit-object
-                if (Physics.Raycast(transform.position, direction_i, out hit_object, scan_distance))
-                {
-                    //obstacle detected close to vehicle, save the position where raycast hit it
-                    raycast_hit_positions.Add(hit_object
-                        .point); //adding point of impact (in global coords) where ray hit the obstacle
-                }
-            }
+        
+        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count) { //Checks if we have any driving left to do
+            
+            //Check if we need to evade other cars with Orca:
+            UpdateNeighboringAgents();
+            if (neighbor_agents.Count() != 0) EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
+            else DriveAndRecover(); //follow path, recover if stuck
+        }
+    }
+    
+    private void OnDrawGizmos() // This method is called by the Unity Editor everytime FixedUpdate() runs.
+    {                           // It must not be called by us during runtime, that will raise an error
+        Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+        Handles.DrawWireDisc(transform.position, Vector3.up, neighbor_radius);
+    }
 
-            if (raycast_hit_positions.Count > 0) //We are currently looking at obstacles with our raycasts
-            {
-                waypoint_margin = 4f; //Increasing waypoint margin while maneuvering away from obstacle to not lose path
-                foreach (Vector3 hit_pos in raycast_hit_positions)
-                {
-                    //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
-                    if (obstacle_avoiding_steering < obstacle_avoiding_steering_limit)
-                    {
-                        float collide_with_obstacle_steering;
-                        float collide_with_obstacle_accel; //currently unused
-                        (collide_with_obstacle_steering, collide_with_obstacle_accel) = ControlsTowardsPoint(hit_pos);
-                        obstacle_avoiding_steering += -collide_with_obstacle_steering;
-                        obstacle_avoiding_steering = Mathf.Clamp(obstacle_avoiding_steering,
-                            -1 * obstacle_avoiding_steering_limit, obstacle_avoiding_steering_limit);
-                    }
-                }
-            }*/
+    private void EvadeCollisionWithORCA()
+    {
+        //TODO
+        //TODO
+        //TODO
+    }
 
-            //////////////////////////////////////////////////////////////
-        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count)
+    private void UpdateNeighboringAgents()
+    {   //Define local neighborhood where we look for other agents to perform ORCA on. A circle of some radius
+        //Check the local neighborhood for other cars, return list of cars in neighborhood (sorted according to how close to us they are?)
+        
+        LayerMask agentlayer = LayerMask.GetMask("Default"); //All agents are in the Defaul layer. Any other gameobject with a collider is in the Obstacle layer
+        neighbor_agents.Clear(); //Clear list from old neighbor-agents before we add new ones below:
+        Collider[] collider_hits = Physics.OverlapSphere(transform.position, neighbor_radius, agentlayer); //Returns array of colliders of gameobjects inside sphere
+        
+        foreach (Collider hit in collider_hits)
         {
-            // Get the car's current forward direction
-            Vector3 forward = transform.forward;
+            if (hit.gameObject != gameObject) neighbor_agents.Add(hit.gameObject); // Ignore collider of car using Overlapshere to find nearby agents' colliders
+        }
+    }
 
-            // Rotate the forward vector by ±30° to get left/right directions for the raycast
-            Vector3 directionRight = Quaternion.Euler(0, -30, 0) * forward;
-            Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * forward;
-            Vector3 directionBackLeft = Quaternion.Euler(0, 150, 0) * forward;
-            Vector3 directionBackRight = Quaternion.Euler(0, -150, 0) * forward;
-            Vector3 directionBack = Quaternion.Euler(0, 180, 0) * forward;
+    private void DriveAndRecover() { //Follow waypoints and do collision recovery
+        // Rotate the car's forward vector by ï¿½30ï¿½ to get left/right directions for the raycast
+        Vector3 directionRight = Quaternion.Euler(0, -30, 0) * transform.forward;
+        Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * transform.forward;
+        Vector3 directionBackLeft = Quaternion.Euler(0, 150, 0) * transform.forward;
+        Vector3 directionBackRight = Quaternion.Euler(0, -150, 0) * transform.forward;
+        Vector3 directionBack = Quaternion.Euler(0, 180, 0) * transform.forward;
 
+        RaycastHit hitRight; RaycastHit hitLeft; RaycastHit hitStraight; 
+        RaycastHit hitBackRight; RaycastHit hitBackLeft; RaycastHit hitBack;
+        float maxRangeClose = 7f;
 
-            RaycastHit hitRight;
-            RaycastHit hitLeft;
-            RaycastHit hitStraight;
-            RaycastHit hitBackRight;
-            RaycastHit hitBackLeft;
-            RaycastHit hitBack;
-            float maxRangeClose = 7f;
+        // Cast the ray in world space (6 ray cast in front,back and diagonals)
+        bool obsRightClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
+        bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
+        bool obsStraightClose = Physics.Raycast(transform.position, transform.TransformDirection(new Vector3(0, 0, 1)),
+            out hitStraight, maxRangeClose);
+        bool obsBackRightClose =
+            Physics.Raycast(transform.position, directionBackRight, out hitBackRight, maxRangeClose);
+        bool obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
+        bool obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
 
-            // Cast the ray in world space (6 ray cast in front,back and diagonals)
-            bool obsRighetClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
-            bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
-            bool obsStraightClose = Physics.Raycast(transform.position,
-                transform.TransformDirection(new Vector3(0, 0, 1)), out hitStraight, maxRangeClose);
-            bool obsBackRightClose = Physics.Raycast(transform.position, directionBackRight, out hitBackRight, maxRangeClose);
-            bool obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
-            bool obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
+        // Draw Raycasts in Blue
+        Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue);
 
-            // Draw Raycasts in Blue
-            Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue);
+        if (!isStuck)
+        {
+            Vector3 target_position = path_of_points[currentPathIndex];
+            target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+            old_target_pos = target_position;
 
-            if (!isStuck)
+            float distance = Vector3.Distance(target_position, transform.position);
+
+            // Scale k_p and k_d based on distance  between 1 and 10
+            float scaleFactor = Mathf.Clamp(distance / 5f, 2f, 8f); // Adjust 5f to control sensitivity
+            float k_p_dynamic = Mathf.Lerp(2f, 5f, scaleFactor / 5f);
+            float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
+
+            float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f); // New gain factor for velocity feedback
+            Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
+
+            // a PD-controller to get desired acceleration from errors in position and velocity
+            Vector3 position_error = target_position - transform.position;
+            Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
+            Vector3 desired_acceleration =
+                k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
+
+            float steering = Vector3.Dot(desired_acceleration, transform.right);
+            float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+
+            //Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
+            //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
+            Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
+
+            // Turn if you're too close to an obstacle
+            if (obsRightClose) steering += 10;
+            if (obsLeftClose) steering -= 10;
+            if (obsBackRightClose) steering += 10;
+            if (obsBackLeftClose) steering -= 10;
+
+            // this is how you control the car
+            //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
+            m_Car.Move(steering, acceleration, acceleration, 0f);
+
+            float distToPoint = 6;
+            if (currentPathIndex == path_of_points.Count() - 1)
+            { distToPoint = 1; }
+
+            if (Vector3.Distance(target_position, transform.position) < distToPoint)
             {
-                Vector3 target_position = path_of_points[currentPathIndex];
-                target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-                old_target_pos = target_position;
-
-                float distance = Vector3.Distance(target_position, transform.position);
-
-                // Scale k_p and k_d based on distance  between 1 and 10
-                float scaleFactor = Mathf.Clamp(distance / 5f, 2f, 8f);  // Adjust 5f to control sensitivity
-                float k_p_dynamic = Mathf.Lerp(2f, 5f, scaleFactor / 5f);
-                float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
-
-                float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
-                Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
-
-                // a PD-controller to get desired acceleration from errors in position and velocity
-                Vector3 position_error = target_position - transform.position;
-                Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
-                Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
-
-                float steering = Vector3.Dot(desired_acceleration, transform.right);
-                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
-
-                //Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
-                //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
-                Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized*5, Color.yellow);
-
-                // Turn if you're too close to an obstacle
-                if (obsRighetClose)
-                {
-                    steering += 10;
-                }
-
-                if (obsLeftClose)
-                {
-                    steering -= 10;
-                }
-                if (obsBackRightClose)
-                {
-                    steering += 10;
-                }
-
-                if (obsBackLeftClose)
-                {
-                    steering -= 10;
-                }
-
-                // this is how you control the car
-                //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
-                m_Car.Move(steering, acceleration, acceleration, 0f);
-
-                float distToPoint = 6;
-                if (currentPathIndex == path_of_points.Count()-1)
-                {
-                    distToPoint = 1;
-                }
-
-                if (Vector3.Distance(target_position, transform.position) < distToPoint)
-                {
-                    checkNewPoint = true;
-                    currentPathIndex++;
-                }
-
-                 // If you're barely moving it means you're stuck
-                if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1 )
-                {
-                    timeStuck +=1;
-                    if (timeStuck > 70) // If you're not moving for too long you're stuck
-                    {
-                        isStuck = true;
-                    }
-                    
-                }
-
+                checkNewPoint = true;
+                currentPathIndex++;
             }
-            else
+
+            // If you're barely moving it means you're stuck
+            if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1)
             {
-                // If you have an obstacle behind you go forward
-                if (obsBackClose || obsBackRightClose || obsBackLeftClose)
-                {
-                    m_Car.Move(0f, 100f, 100f, 0f);                
-                }
-
-                else //go backwards
-                {
-                    m_Car.Move(0f, -100f, -100f, 0f);
-                }
-                
-                timeStuck -=1 ;
-                if (timeStuck == 0)
-                {
-                    isStuck = false;
-                }
+                timeStuck += 1;
+                if (timeStuck > 70) isStuck = true; // If you're not moving for too long you're stuck
             }
+        }
+        else //if stuck:
+        {
+            // If you have an obstacle behind you go forward
+            if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 100f, 100f, 0f);
+            else m_Car.Move(0f, -100f, -100f, 0f); //go backwards
+
+            timeStuck -= 1;
+            if (timeStuck == 0) isStuck = false;
         }
     }
 

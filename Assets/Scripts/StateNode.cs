@@ -367,7 +367,7 @@ public class StateNode : IComparable<StateNode> {
     
     public void fillPaths(List<StateNode> path_of_nodes, List<Vector3> path_of_points) 
     {// Returns path containing this node and all of its parents
-        Debug.Log("Generating path...");
+        //Debug.Log("Generating path...");
         
         path_of_nodes.Add(this);
         path_of_points.Add(this.world_position);
