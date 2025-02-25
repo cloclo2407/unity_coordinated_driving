@@ -9,10 +9,11 @@ public class Formation
 {
     float minSameDirection = 25f; // how much too cars should have the same direction to start following each other
     float maxDeltaVelocity = 10f; // Maximum difference between the speed of two cars to start following each other
+    float maxDistance = 15f;
 
     // return a car to follow if one close going in the same direction
     // return null
-    public GameObject LineFormation(CarController my_Car, GameObject[] m_OtherCars, Vector3 target_position)
+    public void LineFormation(CarController my_Car, GameObject[] m_OtherCars, Vector3 target_position)
     {
         GameObject carToFollow = null;
         foreach (var otherCar in m_OtherCars)
@@ -24,11 +25,20 @@ public class Formation
             AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
 
 
-            if (!otherCarScript.IsBeingFollowed && CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity, target_position))
+            if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity, target_position))
             {
-                carToFollow = otherCar;
-                otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
-                break; // Exit loop after finding a car to follow
+                if (!otherCarScript.isBeingFollowed)
+                {
+                    carToFollow = otherCar;
+                    otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
+                    otherCarScript.followingCar = my_Car;
+                    break; // Exit loop after finding a car to follow
+                }
+                else
+                {
+                    otherCarScript.followingCar.following_Car
+                    otherCarScript.followingCar = my_Car;
+                }
             }
         }
         return carToFollow;
@@ -43,7 +53,7 @@ public class Formation
         float behind = Vector3.Dot(deltaPosition, otherVelocity);
         Vector3 my_direction = target_position - myPosition;
         float sameDirection = Vector3.Angle(my_direction.normalized, otherVelocity.normalized);
-        if (behind > 0 && sameDirection < minSameDirection  && deltaPosition.magnitude < 10f)
+        if (behind > 0 && sameDirection < minSameDirection  && deltaPosition.magnitude < maxDistance)
         {
             return true;
         }
