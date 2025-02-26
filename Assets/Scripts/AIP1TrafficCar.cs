@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
+using System.Numerics;
 using FormationGame;
 using Imported.StandardAssets.Vehicles.Car.Scripts;
 using Scripts.Map;
@@ -11,6 +12,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
+using static alglib;
 
 [RequireComponent(typeof(CarController))]
 public class AIP1TrafficCar : MonoBehaviour
@@ -229,28 +231,95 @@ public class AIP1TrafficCar : MonoBehaviour
             //angle >0 means relative_vel is rotated clockwise from relative_pos by angle degrees
             
             if (Mathf.Abs(relative_vectors_signed_angle) < theta && relative_velocity.magnitude < max_considered_velocity.magnitude)
-            {
-                //We have a collision to avoid. Let's compute and store the constraint for the new velocity
-                //TODO
-                //More vector calculations...
-                //TODO
-                //Tuple<Vector3, Vector3> constraint = new Tuple<Vector3, Vector3>(constraint_point, constraint_normal)
-                //orca_constraints.Add(constraint)
+            {   //We have a collision to avoid. Let's compute and store the constraint for the new velocity
+                
+                if (relative_vectors_signed_angle < 0) //relative_vel in left triangle of VO
+                {
+                    Vector3 left_bound_vector = Quaternion.Euler(0, theta, 0) * relative_position; 
+                    Vector3 projected_relative_velocity = Vector3.Project(relative_velocity, left_bound_vector);
+                    Vector3 smallest_change_to_avoid_collision = projected_relative_velocity - relative_velocity;
+                    Vector3 point_defining_constraint =  v_A + 0.5f*smallest_change_to_avoid_collision;
+                    Vector3 norm_defining_constraint = Vector3.Normalize(smallest_change_to_avoid_collision);
+                    Tuple<Vector3, Vector3> new_constraint = new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
+                    orca_constraints.Add(new_constraint);
+                }
+                
+                //NOTE: left_bound_vector has the correct direction of the left bound of the left triangle, but has
+                //the wrong magnitude, same mag as relative_pos. Since we are only using left_bound_vector as a vector
+                //to project relative_vel onto, its magnitude doesn't matter as long as the direction is correct.
+                // Proof: let * be the scalar product, k be a scalar and u,v be vectors:
+                //proj_u_on_v = (u*v / v*v)v. If v is scaled by scalar k, its magnitude is changed but direction is not:
+                //proj_u_on_kv = (u*(kv) / kv*kv)(kv) = (k/k^2)(u*v/v*v)(kv) = (k^2/k^2)(u*v/v*v)v = (u*v/v*v)v
+                
+                else //signed_angle >= 0, relative_vel in right triangle of VO
+                {
+                    Vector3 right_bound_vector = Quaternion.Euler(0, -theta, 0) * relative_position; 
+                    Vector3 projected_relative_velocity = Vector3.Project(relative_velocity, right_bound_vector);
+                    Vector3 smallest_change_to_avoid_collision = projected_relative_velocity - relative_velocity;
+                    Vector3 point_defining_constraint =  v_A + 0.5f*smallest_change_to_avoid_collision;
+                    Vector3 norm_defining_constraint = Vector3.Normalize(smallest_change_to_avoid_collision);
+                    Tuple<Vector3, Vector3> new_constraint = new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
+                    orca_constraints.Add(new_constraint);
+                }
             }
         }
 
         if (orca_constraints.Count() > 0) //We have a Linear Programming problem to solve
         {
+            //Try first with just one constraint?
             //TODO
             //Try out the LP solver from ALGLIB for C#
             //TODO
             //What form does ALGLIB want its constraints to have?
+            
+            //Assume desired velocity is current velocity.
+
+            solveForNewVelocity();
+
+            //EXECUTE NEW VELOCITY TODO
         }
         
         else //No constraints, all agents in the neighborhood give relative velocities that will not lead to collisions
         {
             DriveAndRecover(); //follow path, recover if stuck
         }        
+    }
+    
+    private Vector3 solveForNewVelocity()
+    {
+        int numVars = 2; // v_x and v_z
+        int numConstraints = orca_constraints.Count();
+
+        // Define Hessian matrix H (identity matrix since we minimize squared distance)
+        double[,] H = { { 1, 0 }, { 0, 1 } };
+
+        // Define linear term c
+        double[] c = { -2 * desiredVelocity.x, -2 * desiredVelocity.z };
+
+        // Define ORCA constraints matrix A and RHS vector b
+        double[,] A = new double[numConstraints, numVars];
+        double[] b = new double[numConstraints];
+
+        for (int i = 0; i < numConstraints; i++)
+        {
+            var (p, n) = orcaConstraints[i];
+            A[i, 0] = n.x;
+            A[i, 1] = n.z;
+            b[i] = Vector3.Dot(p, n);
+        }
+
+        // Solve using ALGLIB's quadratic optimizer
+        double[] solution;
+        alglib.minqpstate state;
+        alglib.minqpcreate(numVars, out state);
+        alglib.minqpsetquadraticterm(state, H);
+        alglib.minqpsetlinearterm(state, c);
+        alglib.minqpsetlc2dense(state, A, b, alglib.qpgeq); // Inequality constraints
+        alglib.minqpsetbc(state, new double[] { -10, -10 }, new double[] { 10, 10 }); // Bounds for velocity
+        alglib.minqpoptimize(state);
+        alglib.minqpresults(state, out solution);
+
+        return new Vector3((float)solution[0], 0, (float)solution[1]);
     }
 
     private void UpdateNeighboringAgents()
