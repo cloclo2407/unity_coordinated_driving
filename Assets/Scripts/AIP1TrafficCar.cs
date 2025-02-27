@@ -13,6 +13,7 @@ using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
 using static alglib;
+using static alglib.minqp;
 
 [RequireComponent(typeof(CarController))]
 public class AIP1TrafficCar : MonoBehaviour
@@ -274,7 +275,7 @@ public class AIP1TrafficCar : MonoBehaviour
             
             //Assume desired velocity is current velocity.
 
-            solveForNewVelocity();
+            Vector3 new_velocity = solveForNewVelocity();
 
             //EXECUTE NEW VELOCITY TODO
         }
@@ -284,42 +285,53 @@ public class AIP1TrafficCar : MonoBehaviour
             DriveAndRecover(); //follow path, recover if stuck
         }        
     }
-    
+
     private Vector3 solveForNewVelocity()
     {
         int numVars = 2; // v_x and v_z
         int numConstraints = orca_constraints.Count();
 
-        // Define Hessian matrix H (identity matrix since we minimize squared distance)
-        double[,] H = { { 1, 0 }, { 0, 1 } };
+        desired_velocity = my_rigidbody.linearVelocity; //FOR NOW THE DESIRED VELOCITY IS SET AS THE CURRENT VELOCITY
 
-        // Define linear term c
-        double[] c = { -2 * desiredVelocity.x, -2 * desiredVelocity.z };
-
-        // Define ORCA constraints matrix A and RHS vector b
+        // Define matrix H (gives quadratic terms, found via calculations with pen and paper)
+        double[,] H = { { 2, 0 }, { 0, 2 } };
+        // Define vector c (gives linear terms, found via calculations with pen and paper)
+        double[] c = { -2 * desired_velocity.x, -2 * desired_velocity.z };
+        
+        // Define ORCA constraints matrix A and RHS vector b, this is pre-allocation of the arrays
         double[,] A = new double[numConstraints, numVars];
-        double[] b = new double[numConstraints];
+        double[] b = new double[numConstraints]; //Acts as a lower bound, Av>=b
+        double[] upper_bound = new double[numConstraints];
 
         for (int i = 0; i < numConstraints; i++)
         {
-            var (p, n) = orcaConstraints[i];
+            var (p, n) = orca_constraints[i];
             A[i, 0] = n.x;
             A[i, 1] = n.z;
             b[i] = Vector3.Dot(p, n);
+            upper_bound[i] = double.PositiveInfinity; //Sets the upper bound to +inf, meaning no upper bound
         }
 
         // Solve using ALGLIB's quadratic optimizer
         double[] solution;
+        alglib.minqpreport report;
         alglib.minqpstate state;
         alglib.minqpcreate(numVars, out state);
-        alglib.minqpsetquadraticterm(state, H);
+        alglib.minqpsetquadraticterm(state, H, false); //false bool says to ALGLIB that H is symmetric, which it is.
         alglib.minqpsetlinearterm(state, c);
-        alglib.minqpsetlc2dense(state, A, b, alglib.qpgeq); // Inequality constraints
-        alglib.minqpsetbc(state, new double[] { -10, -10 }, new double[] { 10, 10 }); // Bounds for velocity
+        alglib.minqpsetlc2dense(state, A, b, upper_bound); // Inequality constraints
+        alglib.minqpsetbc(state, new double[] { -5, -5 }, new double[] { 5, 5 }); // Bounds for velocity to avoid impossibly high speeds
         alglib.minqpoptimize(state);
-        alglib.minqpresults(state, out solution);
+        alglib.minqpresults(state, out solution, out report);
 
-        return new Vector3((float)solution[0], 0, (float)solution[1]);
+        if (report.terminationtype > 3)
+        {
+            // NO FEASIBLE SOLUTION FOUND TODO TODO TODO return 0 vector or something idk
+        }
+        else //Feasable solution found, return it:
+        {
+            return new Vector3((float)solution[0], 0, (float)solution[1]);   
+        }
     }
 
     private void UpdateNeighboringAgents()
