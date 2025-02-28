@@ -79,8 +79,9 @@ public class AIP1TrafficCar : MonoBehaviour
     //ORCA-parameters:
     private float neighbor_radius = 16f;
     private List<GameObject> neighbor_agents = new List<GameObject>();
-    private float timeHorizon = 100f; //tau in the report
+    private float timeHorizon = 10f; //tau in the report
     private List<Tuple<Vector3, Vector3>> orca_constraints = new List<Tuple<Vector3, Vector3>>();
+    private int max_considered_neighbors = 5;
 
     private void Start()
     {
@@ -164,7 +165,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         //////////////////////////Catmull-Rom:
         path_of_points = improvePath.SmoothSplineCatmullRom(path_of_points, 5);
-        path_of_points = improvePath.simplifyPath(path_of_points, 0.1f);
+        //path_of_points = improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
@@ -221,8 +222,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private void OnDrawGizmos() // This method is called by the Unity Editor everytime FixedUpdate() runs.
     {
         // It must not be called by us during runtime, that will raise an error
-        Handles.color =
-            Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+        Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
         Handles.DrawWireDisc(transform.position, Vector3.up, neighbor_radius);
     }
 
@@ -374,13 +374,24 @@ public class AIP1TrafficCar : MonoBehaviour
         //Define local neighborhood where we look for other agents to perform ORCA on. A circle of some radius
         //Check the local neighborhood for other cars, return list of cars in neighborhood (sorted according to how close to this car they are?)
 
+        List<(GameObject car, float distance)> sorted_cars = new List<(GameObject, float)>(); //This is a more modern way to use Tuples in C#
+        
         //NOTE: for some reason, this car is added to m_OtherCars, so we have to exclude it below
         foreach (GameObject car in m_OtherCars)
         {
             if (car != gameObject && (transform.position - car.transform.position).magnitude < neighbor_radius) //Exclude this car from neighbor cars
             {
-                neighbor_agents.Add(car);
+                sorted_cars.Add((car, (transform.position - car.transform.position).magnitude));
             }
+        }
+        
+        //sort list of cars in ascending distance to this car, with lambda expression
+        sorted_cars.Sort((tuple_a, tuple_b) => tuple_a.distance.CompareTo(tuple_b.distance));
+
+        for (int i = 0; i < sorted_cars.Count; i++)
+        {
+            if (i < max_considered_neighbors - 1) neighbor_agents.Add(sorted_cars[i].car);
+            else break; //If we only want to add 5 closest cars, let i go from 0 to 4 and then break out of for-loop, based on max_considered_neighbors
         }
 
         /* //This solution did not work as the ground plane, goal, and start positions also are placed in the Default layer
