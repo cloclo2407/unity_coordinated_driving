@@ -79,7 +79,7 @@ public class AIP1TrafficCar : MonoBehaviour
     //ORCA-parameters:
     private float neighbor_radius = 16f;
     private List<GameObject> neighbor_agents = new List<GameObject>();
-    private float timeHorizon = 10f; //tau in the report
+    private float timeHorizon = 1f; //tau in the report, high tau -> low responsiveness, low tau -> high responsiveness?
     private List<Tuple<Vector3, Vector3>> orca_constraints = new List<Tuple<Vector3, Vector3>>();
     private int max_considered_neighbors = 5;
 
@@ -242,17 +242,15 @@ public class AIP1TrafficCar : MonoBehaviour
             Vector3 relative_velocity = (v_A - v_B); //Is this the correct way of calculating relative_vel
             Vector3 relative_position = (pos_B - pos_A); // and relative_pos?
 
-            float theta =
-                Mathf.Asin((car_radius + car_radius) /
-                           relative_position.magnitude); //Angle defining if relative_vel is in velocity obstacle
+            float theta = Mathf.Asin((car_radius + car_radius) / relative_position.magnitude); //Angle defining if relative_vel is in velocity obstacle
             Vector3 max_considered_velocity = relative_velocity + relative_position / timeHorizon;
 
-            float relative_vectors_signed_angle = Vector3.SignedAngle(relative_position, relative_velocity, Vector3.up);
+            //NOTE Mathf.Asin returns an angle in RADIANS, while Vector3.SignedAngle returns an angle in DEGREES
+            float relative_vectors_signed_angle = Vector3.SignedAngle(relative_position, relative_velocity, Vector3.up)*Mathf.Deg2Rad;
             //angle <0 means relative_vel is rotated counterclockwise from relative_pos by angle degrees
             //angle >0 means relative_vel is rotated clockwise from relative_pos by angle degrees
-
-            if (Mathf.Abs(relative_vectors_signed_angle) < theta &&
-                relative_velocity.magnitude < max_considered_velocity.magnitude)
+            
+            if (Mathf.Abs(relative_vectors_signed_angle) < theta && relative_velocity.magnitude < max_considered_velocity.magnitude)
             {
                 //We have a collision to avoid. Let's compute and store the constraint for the new velocity
 
@@ -301,13 +299,13 @@ public class AIP1TrafficCar : MonoBehaviour
                 Vector3 line_starting_point = transform.position + constraint.Item1;
                 
                 //Draw normal to constraint-line
-                Debug.DrawLine(line_starting_point, line_starting_point+constraint.Item2*5f, Color.cyan);
+                Debug.DrawLine(line_starting_point, line_starting_point+constraint.Item2*5f, Color.yellow);
                 //Draw each halves of the line (left and right)
                 Debug.DrawLine(line_starting_point, line_starting_point+(0.5f*neighbor_radius*parallel_vector), Color.cyan);
                 Debug.DrawLine(line_starting_point, line_starting_point+(-0.5f*neighbor_radius*parallel_vector), Color.cyan);
             }
             
-            Debug.Log("USING ORCA");
+            //Debug.Log("USING ORCA");
             
             //Solve quadratic programming problem according to orca_constraints and return new safe velocity
             Vector3 new_velocity = solveForNewVelocity();
@@ -326,6 +324,9 @@ public class AIP1TrafficCar : MonoBehaviour
         int numVars = 2; // v_x and v_z
         int numConstraints = orca_constraints.Count();
 
+        // Got recommended to switch desired_velocity from current_velocity to the vector between the car's pos and its next waypoint:
+        //Vector3 next_waypoint = path_of_points[currentPathIndex];
+        //desired_velocity = transform.position - next_waypoint; //Current velocity worked better?
         desired_velocity = my_rigidbody.linearVelocity; //FOR NOW THE DESIRED VELOCITY IS SET AS THE CURRENT VELOCITY
 
         // Define matrix H (gives quadratic terms, found via calculations with pen and paper)
@@ -452,7 +453,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
             }
             
-            Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white, 1f); //Draws white line if we have nonzero orca velocity
+            Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity
             Debug.DrawLine(transform.position, path_of_points[currentPathIndex], Color.black); //Draws black line to waypoint 
             
             old_target_pos = target_position;
