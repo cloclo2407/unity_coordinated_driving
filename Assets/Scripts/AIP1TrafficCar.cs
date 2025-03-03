@@ -282,9 +282,11 @@ public class AIP1TrafficCar : MonoBehaviour
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
                 old_target_pos = target_position;
 
-                GameObject carToFollow = m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+                m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
                 if (carToFollow != null)
                 {
+                    Debug.DrawRay(transform.position, carToFollow.transform.forward * (carToFollow.transform.forward - transform.position).magnitude, Color.red);
+
                     target_position = carToFollow.transform.position;
                     target_velocity = carToFollow.GetComponent<CarController>().GetComponent<Rigidbody>().linearVelocity;
                 }

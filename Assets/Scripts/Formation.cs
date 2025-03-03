@@ -7,9 +7,9 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class Formation
 {
-    float minSameDirection = 25f; // how much too cars should have the same direction to start following each other
+    float minSameDirection = 25f; // how much too cars should have the same direction to start following each other (angle)
     float maxDeltaVelocity = 10f; // Maximum difference between the speed of two cars to start following each other
-    float maxDistance = 15f;
+    float maxDistance = 5f;
 
     // return a car to follow if one close going in the same direction
     // return null
@@ -27,21 +27,23 @@ public class Formation
 
             if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity, target_position))
             {
-                if (!otherCarScript.isBeingFollowed)
+                if (!otherCarScript.IsBeingFollowed)
                 {
                     carToFollow = otherCar;
                     otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
                     otherCarScript.followingCar = my_Car;
-                    break; // Exit loop after finding a car to follow
+                    return; // Exit loop after finding a car to follow
                 }
                 else
                 {
-                    otherCarScript.followingCar.following_Car
+                    otherCarScript.followingCar.GetComponent<AIP1TrafficCar>().carToFollow = my_Car; // the car following the car I want to follow is going to follow me
                     otherCarScript.followingCar = my_Car;
+                    return;
                 }
             }
         }
-        return carToFollow;
+        carToFollow.GetComponent<AIP1TrafficCar>().IsBeingFollowed = false;
+        carToFollow = null;
     }
 
     // return true if the other car is in front of my car and their directions are similar and their velocity are similar
