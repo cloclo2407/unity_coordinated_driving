@@ -9,7 +9,7 @@ public class Formation
 {
     float minSameDirection = 35f; // how much too cars should have the same direction to start following each other (angle)
     float maxDeltaVelocity = 10f; // Maximum difference between the speed of two cars to start following each other
-    float maxDistance = 12f;
+    float maxDistance = 20f;
 
     // return a car to follow if one close going in the same direction
     // return null

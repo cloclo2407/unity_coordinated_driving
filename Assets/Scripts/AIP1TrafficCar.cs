@@ -287,13 +287,14 @@ public class AIP1TrafficCar : MonoBehaviour
                 if (carToFollow != null)
                 {
 
-                    //target_position = carToFollow.transform.position;
-                    //Vector3 new_target = (target_position - transform.position) * 0.9f ; // Aim for behind the car to not hit it
-                    //target_position = new_target - transform.position;
-                    //target_velocity = carToFollow.GetComponent<CarController>().GetComponent<Rigidbody>().linearVelocity;
-                    //target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+                    target_position = carToFollow.transform.position;
+                    Vector3 new_target = (target_position - transform.position) * 0.8f ; // Aim for behind the car to not hit it
+                    target_position = new_target + transform.position;
 
-                    // Get carToFollow's position and forward direction
+                    target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity;
+
+
+                    /*// Get carToFollow's position and forward direction
                     Vector3 followPosition = carToFollow.transform.position;
                     Vector3 followDirection = carToFollow.transform.forward;
 
@@ -302,13 +303,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
                     // target_velocity = carToFollow.GetComponent<Rigidbody>().velocity; (Uncomment if needed)
                     target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-
-                    // Debugging: Draw a line from my car to the actual position of the car I'm following
-                    // Debug.DrawLine(followPosition, target_position, Color.red);  // Shows where we're aiming to follow
-
-                    //Debug.DrawLine(transform.position, target_position, Color.red);
-                    Debug.Log("following");
-
+                    */
                 }
 
 
