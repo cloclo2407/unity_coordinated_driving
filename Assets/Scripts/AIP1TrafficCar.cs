@@ -22,9 +22,11 @@ public class AIP1TrafficCar : MonoBehaviour
     public static int carCounter = 0; //This field belongs to the class/type, not to any specific object of the class
 
     //It is used to give an index to the specific car clone that has this script attached.
-    private int myCarIndex; //This car's specific index
-    //For debugging when a specific car is acting crazy
-    private int crazyCarIndex = 7;
+    private int myCarIndex; //This car's specific index in array of agents m_OtherCars (includes this car!)
+    private int crazyCarIndex = 1; //For debugging when a specific car is acting crazy
+    private float waiting_multiplier = 0f;
+    private bool start_moving = false;
+    private bool goal_reached = false;
 
     private CarController m_Car; // the car controller we want to use
     private BoxCollider carCollider; //unused BoxCollider
@@ -90,8 +92,7 @@ public class AIP1TrafficCar : MonoBehaviour
         m_Car = GetComponent<CarController>();
         my_rigidbody = GetComponent<Rigidbody>();
         improvePath = new ImprovePath();
-
-
+        
         m_MapManager = FindFirstObjectByType<MapManager>();
         Vector3 cell_scale = Vector3.one * 3f;
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), cell_scale);
@@ -105,22 +106,19 @@ public class AIP1TrafficCar : MonoBehaviour
         // Note that this array will have "holes" when objects are destroyed. For initial planning they should work.
         // If you don't like the "holes", you can re-fetch this during fixed update.
         // Equivalent ways to find all the targets in the scene
-        targetObjects =
-            m_CurrentGoals.Select(goal => goal.GetTargetObject())
-                .ToList(); //targetObjects is a list of one element for some reason
+        targetObjects = m_CurrentGoals.Select(goal => goal.GetTargetObject()).ToList(); //targetObjects is a list of one element for some reason
         // You can also fetch other types of objects using tags, assuming the objects you are looking for HAVE tags :).
         // Feel free to refer to any examples from previous assignments.
 
         ////////////////////////// Plan your path here
         myCarIndex = carCounter % m_MapManager.startPositions.Count; //Index of this specific car
         carCounter++; //myCarIndex is used to find the specific start_pos and goal_pos of this car
-        Debug.Log("myCarIndex: " + myCarIndex + ", carCounter: " + carCounter + ", targetObjects.Count: " +
-                  targetObjects.Count);
+        //Debug.Log("myCarIndex: " + myCarIndex + ", carCounter: " + carCounter + ", targetObjects.Count: " + targetObjects.Count);
         Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
         Vector3 goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
 
-        Debug.Log("start_pos: " + start_pos_global);
-        Debug.Log("goal_pos: " + goal_pos_global);
+        //Debug.Log("start_pos: " + start_pos_global);
+        //Debug.Log("goal_pos: " + goal_pos_global);
 
         PriorityQueue Q = new PriorityQueue();
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
@@ -149,7 +147,7 @@ public class AIP1TrafficCar : MonoBehaviour
             } //Add all new nodes to the queue
         }
 
-        Debug.Log("Stopped looking for path (left the while-loop)");
+        //Debug.Log("Stopped looking for path (left the while-loop)");
 
         //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
         foreach (StateNode node in path_of_nodes)
@@ -158,12 +156,13 @@ public class AIP1TrafficCar : MonoBehaviour
         }
 
         // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
-        /* for (int i = 0;
-             i < path_of_points.Count - 1;
-             i++) // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
+        if (myCarIndex == crazyCarIndex)
         {
-            Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f);
-        }*/
+            for (int i = 0; i < path_of_points.Count - 1; i++) {
+                // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
+                Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f);
+            }   
+        }
 
         //////////////////////////Catmull-Rom:
         path_of_points = improvePath.SmoothSplineCatmullRom(path_of_points, 5);
@@ -171,10 +170,20 @@ public class AIP1TrafficCar : MonoBehaviour
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
-        Debug.Log("Path of points contains :" + path_of_points.Count + "points");
+        /* if (myCarIndex == crazyCarIndex)            //Debugging:
+        { Debug.Log("Crazy car: "+crazyCarIndex+", currentPathIndex: "+currentPathIndex+", path_of_points contains: " + path_of_points.Count + " waypoints"); } */
+        
+        StartCoroutine(wait()); //Wait to begin driving
     }
-
-
+    
+    private IEnumerator wait()
+    { 
+        //Debug.Log("Car with index " + myCarIndex + " is waiting for " + myCarIndex * waiting_multiplier + " seconds");
+        yield return new WaitForSeconds(myCarIndex * waiting_multiplier);
+        //Fixedupdate runs while start is waiting so we need to define a flag that forbids update from driving while Start is waiting
+        this.start_moving = true;
+    }
+    
     /*
     private void Update()
     {
@@ -210,15 +219,25 @@ public class AIP1TrafficCar : MonoBehaviour
     {
         // Feel free to refer to any examples from previous assignments.
 
-        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count)
+        if (goal_reached == true) //Make the car stop after reaching goal.
+        {
+            if (my_rigidbody.linearVelocity.magnitude > 0.005f) m_Car.Move(0f, 0f, 0f, 100f);
+            //Debugging:
+            /* if (myCarIndex == crazyCarIndex)
+            { Debug.Log("Crazy car: "+crazyCarIndex+", velocity magnitude: "+my_rigidbody.linearVelocity.magnitude+
+                        ", currentPathIndex: "+currentPathIndex); } */
+        }
+        
+        else if (start_moving == true && path_of_points.Count != 0 && currentPathIndex < path_of_points.Count)
         {
             //Checks if we have any driving left to do
 
             //Check if we need to evade other cars with Orca:
             UpdateNeighboringAgents();
-            if (neighbor_agents.Count() != 0) EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
+            if (neighbor_agents.Count != 0) EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
             else DriveAndRecover(Vector3.zero); //follow path, recover if stuck
         }
+        
     }
 
     private void OnDrawGizmos() // This method is called by the Unity Editor everytime FixedUpdate() runs.
@@ -287,14 +306,12 @@ public class AIP1TrafficCar : MonoBehaviour
                     orca_constraints.Add(new_constraint);
                 }
 
-                if (myCarIndex == crazyCarIndex)
-                {
-                    Debug.Log("Crazy car :" + crazyCarIndex+ " avoiding collision with name: "+ other_agent.name + ", tag: " + other_agent.tag + ", in layer: "+ other_agent.layer);   
-                }
+                /* if (myCarIndex == crazyCarIndex) //Debugging
+                { Debug.Log("Crazy car: "+crazyCarIndex+" avoiding collision with name: "+other_agent.name+", tag: "+other_agent.tag+", in layer: "+other_agent.layer); } */
             }
         }
 
-        if (orca_constraints.Count() > 0) //We have an optimization problem to solve
+        if (orca_constraints.Count > 0) //We have an optimization problem to solve
         {
             //Draw constraint-lines and corrsponding normals for debugging:
             foreach (Tuple<Vector3, Vector3> constraint in orca_constraints)
@@ -329,7 +346,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private Vector3 solveForNewVelocity()
     {
         int numVars = 2; // v_x and v_z
-        int numConstraints = orca_constraints.Count();
+        int numConstraints = orca_constraints.Count;
 
         // Got recommended to switch desired_velocity from current_velocity to the vector between the car's pos and its next waypoint:
         //Vector3 next_waypoint = path_of_points[currentPathIndex];
@@ -444,7 +461,7 @@ public class AIP1TrafficCar : MonoBehaviour
         if (!isStuck)
         {
             Vector3 target_position; //Why is target_position local to this scope, but target_velocity is an attribute of the class?
-
+            
             if (orca_velocity != Vector3.zero)
             {
                 target_position = transform.position + orca_velocity;
@@ -494,14 +511,23 @@ public class AIP1TrafficCar : MonoBehaviour
             //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
             m_Car.Move(steering, acceleration, acceleration, 0f);
 
-            float distToPoint = 6;
-            if (currentPathIndex == path_of_points.Count() - 1)
-            { distToPoint = 1; }
+            float distToPoint = 6.8f;
+            if (currentPathIndex == path_of_points.Count - 1)
+            { distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
 
-            if (Vector3.Distance(target_position, transform.position) < distToPoint)
+            if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
             {
                 //checkNewPoint = true; //this is unused
                 currentPathIndex++;
+                if (currentPathIndex == path_of_points.Count) {goal_reached = true;}
+                
+                /* if (myCarIndex == crazyCarIndex) //Debugging
+                { Debug.Log("Crazy car: " +crazyCarIndex+", orca_vel: "+orca_velocity+", " +
+                            "target_pos: "+target_position+ ", distance to target_pos: "
+                            + Vector3.Distance(target_position, transform.position)+
+                            ", next wp on path: "+path_of_points[currentPathIndex-1]+ ", distance to wp: "+ 
+                            Vector3.Distance(path_of_points[currentPathIndex-1], transform.position)+
+                            ", currentPathIndex: "+currentPathIndex); } */
             }
 
             // If you're barely moving it means you're stuck
