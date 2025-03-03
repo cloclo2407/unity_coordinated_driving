@@ -288,7 +288,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
 
                     //target_position = carToFollow.transform.position;
-                    //Vector3 new_target = (target_position - transform.position) * 0.9f ; // Aim for behing the car to not hit it
+                    //Vector3 new_target = (target_position - transform.position) * 0.9f ; // Aim for behind the car to not hit it
                     //target_position = new_target - transform.position;
                     //target_velocity = carToFollow.GetComponent<CarController>().GetComponent<Rigidbody>().linearVelocity;
                     //target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;

@@ -17,6 +17,16 @@ public class Formation
     {
         AIP1TrafficCar myCarScript = my_Car.GetComponent<AIP1TrafficCar>(); // Get the script
 
+        if (myCarScript.carToFollow != null)
+        {
+            Vector3 otherPosition = myCarScript.carToFollow.transform.position;
+            Vector3 otherVelocity = myCarScript.carToFollow.GetComponent<Rigidbody>().linearVelocity;
+            if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity, otherPosition, otherVelocity, target_position))
+            {
+                return;
+            }
+        }
+
         foreach (var otherCar in m_OtherCars)
         {
             if (otherCar == my_Car) continue; // skip self
