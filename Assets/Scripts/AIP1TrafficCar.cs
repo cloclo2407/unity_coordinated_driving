@@ -268,29 +268,49 @@ public class AIP1TrafficCar : MonoBehaviour
             bool obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
 
             // Draw Raycasts in Blue
-            Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
-            Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue);
+            //Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
+            //Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
+            //Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
+            //Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
+            //Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
+            //Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue);
 
             if (!isStuck)
             {
-
                 Vector3 target_position = path_of_points[currentPathIndex];
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
                 old_target_pos = target_position;
 
                 m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+                float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
+
                 if (carToFollow != null)
                 {
 
-                    target_position = carToFollow.transform.position;
-                    target_velocity = carToFollow.GetComponent<CarController>().GetComponent<Rigidbody>().linearVelocity;
-                    Debug.DrawRay(transform.position, target_position - transform.position, Color.red);
+                    //target_position = carToFollow.transform.position;
+                    //Vector3 new_target = (target_position - transform.position) * 0.9f ; // Aim for behing the car to not hit it
+                    //target_position = new_target - transform.position;
+                    //target_velocity = carToFollow.GetComponent<CarController>().GetComponent<Rigidbody>().linearVelocity;
+                    //target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+
+                    // Get carToFollow's position and forward direction
+                    Vector3 followPosition = carToFollow.transform.position;
+                    Vector3 followDirection = carToFollow.transform.forward;
+
+                    // Place the target a safe distance behind the car we're following
+                    target_position = followPosition - (followDirection * safeFollowDistance);
+
+                    // target_velocity = carToFollow.GetComponent<Rigidbody>().velocity; (Uncomment if needed)
+                    target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+
+                    // Debugging: Draw a line from my car to the actual position of the car I'm following
+                    // Debug.DrawLine(followPosition, target_position, Color.red);  // Shows where we're aiming to follow
+
+                    //Debug.DrawLine(transform.position, target_position, Color.red);
+                    Debug.Log("following");
 
                 }
+
 
                 float distance = Vector3.Distance(target_position, transform.position);
 
@@ -340,6 +360,9 @@ public class AIP1TrafficCar : MonoBehaviour
                     }
                 }
 
+                Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
+
+
                 // this is how you control the car
                 //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
                 m_Car.Move(steering, acceleration, acceleration, 0f);
@@ -350,7 +373,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     distToPoint = 1;
                 }
 
-                if (Vector3.Distance(target_position, transform.position) < distToPoint && carToFollow == null)
+                    if (Vector3.Distance(target_position, transform.position) < distToPoint && carToFollow == null)
                 {
                     checkNewPoint = true;
                     currentPathIndex++;
@@ -430,6 +453,31 @@ public class AIP1TrafficCar : MonoBehaviour
         }
         
         return (steering, acceleration);
+    }
+
+    private int FindNearestForwardIndex(Vector3 currentPosition, int startIndex, float searchRadius)
+    {
+        int nearestIndex = startIndex;
+        float smallestDistance = float.MaxValue;
+        Vector3 carForward = transform.forward;
+
+        for (int i = startIndex; i < path_of_points.Count; i++)
+        {
+            Vector3 toPathPoint = path_of_points[i] - currentPosition;
+            float distance = toPathPoint.magnitude;
+
+            // Consider points that are somewhat in front of the car
+            if (Vector3.Dot(toPathPoint.normalized, carForward) > 0f)
+            {
+                if (distance < smallestDistance && distance < searchRadius)
+                {
+                    smallestDistance = distance;
+                    nearestIndex = i;
+                }
+            }
+        }
+
+        return Mathf.Max(nearestIndex, currentPathIndex);
     }
 
 

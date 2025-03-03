@@ -7,9 +7,9 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class Formation
 {
-    float minSameDirection = 25f; // how much too cars should have the same direction to start following each other (angle)
+    float minSameDirection = 35f; // how much too cars should have the same direction to start following each other (angle)
     float maxDeltaVelocity = 10f; // Maximum difference between the speed of two cars to start following each other
-    float maxDistance = 5f;
+    float maxDistance = 12f;
 
     // return a car to follow if one close going in the same direction
     // return null
@@ -58,7 +58,7 @@ public class Formation
     {
         Vector3 deltaPosition = otherPosition - myPosition;
         float deltaVelocity = (otherVelocity - myVelocity).magnitude;
-        float behind = Vector3.Dot(deltaPosition, otherVelocity);
+        float behind = Vector3.Dot(deltaPosition.normalized, otherVelocity.normalized);
         Vector3 my_direction = target_position - myPosition;
         float sameDirection = Vector3.Angle(my_direction.normalized, otherVelocity.normalized);
         if (behind > 0 && sameDirection < minSameDirection  && deltaPosition.magnitude < maxDistance)
