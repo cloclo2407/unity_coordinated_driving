@@ -23,6 +23,8 @@ public class AIP1TrafficCar : MonoBehaviour
 
     //It is used to give an index to the specific car clone that has this script attached.
     private int myCarIndex; //This car's specific index
+    //For debugging when a specific car is acting crazy
+    private int crazyCarIndex = 7;
 
     private CarController m_Car; // the car controller we want to use
     private BoxCollider carCollider; //unused BoxCollider
@@ -46,7 +48,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private bool isStuck = false;
     private int timeStuck = 0;
     private float reverseDuration = 0;
-    private bool checkNewPoint = true;
+    //private bool checkNewPoint = true; //this is unused
 
 
     public bool drawTargets;
@@ -284,6 +286,11 @@ public class AIP1TrafficCar : MonoBehaviour
                         new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
                     orca_constraints.Add(new_constraint);
                 }
+
+                if (myCarIndex == crazyCarIndex)
+                {
+                    Debug.Log("Crazy car :" + crazyCarIndex+ " avoiding collision with name: "+ other_agent.name + ", tag: " + other_agent.tag + ", in layer: "+ other_agent.layer);   
+                }
             }
         }
 
@@ -371,26 +378,22 @@ public class AIP1TrafficCar : MonoBehaviour
     }
 
     private void UpdateNeighboringAgents()
-    {
-        //Define local neighborhood where we look for other agents to perform ORCA on. A circle of some radius
+    {   //Define local neighborhood where we look for other agents to perform ORCA on. A circle of some radius
         //Check the local neighborhood for other cars, return list of cars in neighborhood (sorted according to how close to this car they are?)
-
+        neighbor_agents.Clear(); //Clear list from old neighbor-agents before we add new ones below:
+        
         List<(GameObject car, float distance)> sorted_cars = new List<(GameObject, float)>(); //This is a more modern way to use Tuples in C#
         
         //NOTE: for some reason, this car is added to m_OtherCars, so we have to exclude it below
-        foreach (GameObject car in m_OtherCars)
-        {
+        foreach (GameObject car in m_OtherCars) {
             if (car != gameObject && (transform.position - car.transform.position).magnitude < neighbor_radius) //Exclude this car from neighbor cars
-            {
-                sorted_cars.Add((car, (transform.position - car.transform.position).magnitude));
-            }
+            { sorted_cars.Add((car, (transform.position - car.transform.position).magnitude)); }
         }
         
         //sort list of cars in ascending distance to this car, with lambda expression
         sorted_cars.Sort((tuple_a, tuple_b) => tuple_a.distance.CompareTo(tuple_b.distance));
 
-        for (int i = 0; i < sorted_cars.Count; i++)
-        {
+        for (int i = 0; i < sorted_cars.Count; i++) {
             if (i < max_considered_neighbors - 1) neighbor_agents.Add(sorted_cars[i].car);
             else break; //If we only want to add 5 closest cars, let i go from 0 to 4 and then break out of for-loop, based on max_considered_neighbors
         }
@@ -454,7 +457,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             
             Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity
-            Debug.DrawLine(transform.position, path_of_points[currentPathIndex], Color.black); //Draws black line to waypoint 
+            Debug.DrawLine(transform.position, path_of_points[currentPathIndex], Color.black); //Draws black line to waypoint on path
             
             old_target_pos = target_position;
 
@@ -497,7 +500,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
             if (Vector3.Distance(target_position, transform.position) < distToPoint)
             {
-                checkNewPoint = true;
+                //checkNewPoint = true; //this is unused
                 currentPathIndex++;
             }
 
