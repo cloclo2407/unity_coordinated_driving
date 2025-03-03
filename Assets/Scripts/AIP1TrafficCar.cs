@@ -285,13 +285,15 @@ public class AIP1TrafficCar : MonoBehaviour
                 m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
                 if (carToFollow != null)
                 {
-                    Debug.DrawRay(transform.position, carToFollow.transform.forward * (carToFollow.transform.forward - transform.position).magnitude, Color.red);
 
                     target_position = carToFollow.transform.position;
                     target_velocity = carToFollow.GetComponent<CarController>().GetComponent<Rigidbody>().linearVelocity;
+                    Debug.DrawRay(transform.position, target_position - transform.position, Color.red);
+
                 }
 
                 float distance = Vector3.Distance(target_position, transform.position);
+
 
                 // Scale k_p and k_d based on distance  between 1 and 10
                 float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
@@ -348,7 +350,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     distToPoint = 1;
                 }
 
-                if (Vector3.Distance(target_position, transform.position) < distToPoint)
+                if (Vector3.Distance(target_position, transform.position) < distToPoint && carToFollow == null)
                 {
                     checkNewPoint = true;
                     currentPathIndex++;

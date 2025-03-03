@@ -15,7 +15,8 @@ public class Formation
     // return null
     public void LineFormation(CarController my_Car, GameObject[] m_OtherCars, Vector3 target_position)
     {
-        GameObject carToFollow = null;
+        AIP1TrafficCar myCarScript = my_Car.GetComponent<AIP1TrafficCar>(); // Get the script
+
         foreach (var otherCar in m_OtherCars)
         {
             if (otherCar == my_Car) continue; // skip self
@@ -27,9 +28,10 @@ public class Formation
 
             if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity, target_position))
             {
+                myCarScript.carToFollow = otherCar.GetComponent<CarController>();
+
                 if (!otherCarScript.IsBeingFollowed)
                 {
-                    carToFollow = otherCar;
                     otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
                     otherCarScript.followingCar = my_Car;
                     return; // Exit loop after finding a car to follow
@@ -42,8 +44,12 @@ public class Formation
                 }
             }
         }
-        carToFollow.GetComponent<AIP1TrafficCar>().IsBeingFollowed = false;
-        carToFollow = null;
+        if (myCarScript.carToFollow != null)
+        {
+            myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().IsBeingFollowed = false;
+            myCarScript.carToFollow = null;
+        }
+        return;
     }
 
     // return true if the other car is in front of my car and their directions are similar and their velocity are similar
