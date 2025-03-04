@@ -47,7 +47,7 @@ public class StateNode : IComparable<StateNode> {
         //this.goal_world_position = goal_world_position;
         this.cell_position = obstacleMap.WorldToCell(world_position);
         this.parent_node = parent_node;
-        this.cost_to_come = calculateCostToCome(); //setting cost_to_come
+        calculateCostToCome(); //setting this.cost_to_come as length of the path leading up to this node
         // Vector3 has x,y,z-components of type float. Math.Pow() takes doubles and returns double. Math.Sqrt() takes double and returns double.
         // (float) converts the double returned by the Math functions to float.
         float euclidean_distance_to_goal = (float)( Math.Sqrt(  Math.Pow(goal_world_pos.x - this.world_position.x, 2d) + Math.Pow(goal_world_pos.z - this.world_position.z, 2d)  ) );
@@ -76,59 +76,16 @@ public class StateNode : IComparable<StateNode> {
         this.combined_cost = this.cost_to_come + this.cost_to_go + this.close_to_obstacle_penalty; //+ this.close_to_used_wp_penalty; //+ turning_penalty;
     }
 
-    private float calculateCostToCome()
-    { //How do we calculate cost_to_come when different steps have different lengths?
-        //A childnode can only differ in orientation from its parent by -45, 0 or 45 degrees
+    private void calculateCostToCome()
+    { //Calculates cost_to_come as the length of the path so far
         
-        //TODO TRY ROUNDING cost_to_come TO SOME SPECIFIC DECIMAL TO MAKE cost_to_come MORE EQUAL GIVEN ORIENTATION???
+        if (this.parent_node == null) //This is the root node/ starting node, cost to come here is 0.
+        { this.cost_to_come = 0f; }
         
-        float parent_cost_to_come;
-        float parent_orientation;
-        
-        if (this.parent_node == null) //This is the root node we're calculating cost_to_come for
-        { parent_cost_to_come = 0f; parent_orientation = 0f; }
         else //This is not the root node
-        { parent_cost_to_come = parent_node.cost_to_come; parent_orientation = parent_node.orientation; }
-        
-        if (parent_orientation % 90 == 0) {
-            // parent.orientation = ...0,90,180,270... (multiple of 90 degrees)
-            // Orientation is aligned with the grid. Moving forwards will keep grid alignment.
-            // Moving to diagonal cell will require a step sqrt(cellength^2+cellength^2)
-            if (parent_orientation - this.orientation == 0)
-            { //Child has same orientation as parent, in this case it is forward movement aligned with grid
-                this.cost_to_come = parent_cost_to_come + 1f;
-            }
-            else
-            { //Child has different orientation than parent, in this case it means diagonal movement NOT aligned with grid
-                this.cost_to_come = parent_cost_to_come + Mathf.Sqrt(2f);
-            }
-
-        }
-        else { 
-            // parent.orientation is multiple of 45 degrees
-            // Orientation is not aligned with grid. Moving diagonally will realign orientation with grid.
-            // Moving forwards will require a step sqrt(cellength^2+cellength^2)
-            if (parent_orientation - this.orientation == 0)
-            { //Child has same orientation as parent, in this case it is forward movement NOT aligned with grid
-                this.cost_to_come = parent_cost_to_come + Mathf.Sqrt(2f);
-            }
-            else
-            { //Child has different orientation than parent, in this case it means diagonal movement aligned with grid
-                this.cost_to_come = parent_cost_to_come + 1f;
-            }
-        }
-
-        return this.cost_to_come;
-        
-        /* // Prev version of this method:
-        int parentcounter = 0;
-        StateNode current = this;
-        while (current.parent_node != null)
         {
-            parentcounter++;
-            current = current.parent_node; //point current at parent to check the parent of parent
+            this.cost_to_come = parent_node.cost_to_come + Vector3.Distance(this.parent_node.world_position, this.world_position);
         }
-        return parentcounter; */
     }
     
     private float calculatePenalty(ObstacleMap obstacleMap)
