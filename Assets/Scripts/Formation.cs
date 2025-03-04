@@ -11,8 +11,8 @@ public class Formation
     float maxDeltaVelocity = 10f; // Maximum difference between the speed of two cars to start following each other
     float maxDistance = 20f;
 
-    // return a car to follow if one close going in the same direction
-    // return null
+    // return a car to follow if one close going in the same direction (returns closest one)
+    // else return null
     public void LineFormation(CarController my_Car, GameObject[] m_OtherCars, Vector3 target_position)
     {
         AIP1TrafficCar myCarScript = my_Car.GetComponent<AIP1TrafficCar>(); // Get the script
@@ -21,11 +21,16 @@ public class Formation
         {
             Vector3 otherPosition = myCarScript.carToFollow.transform.position;
             Vector3 otherVelocity = myCarScript.carToFollow.GetComponent<Rigidbody>().linearVelocity;
+           
             if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity, otherPosition, otherVelocity, target_position))
             {
                 return;
             }
         }
+
+
+        GameObject closestCar = null;
+        float closestDistance = float.MaxValue;
 
         foreach (var otherCar in m_OtherCars)
         {
@@ -33,26 +38,35 @@ public class Formation
 
             Vector3 otherPosition = otherCar.transform.position;
             Vector3 otherVelocity = otherCar.GetComponent<Rigidbody>().linearVelocity;
-            AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
+
+            float distance = Vector3.Distance(my_Car.transform.position, otherPosition);
 
 
-            if (CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity , otherPosition, otherVelocity, target_position))
+            if (distance < closestDistance && CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity, otherPosition, otherVelocity, target_position))
             {
-                myCarScript.carToFollow = otherCar.GetComponent<CarController>();
-
-                if (!otherCarScript.IsBeingFollowed)
-                {
-                    otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
-                    otherCarScript.followingCar = my_Car;
-                    return; // Exit loop after finding a car to follow
-                }
-                else
-                {
-                    otherCarScript.followingCar.GetComponent<AIP1TrafficCar>().carToFollow = my_Car; // the car following the car I want to follow is going to follow me
-                    otherCarScript.followingCar = my_Car;
-                    return;
-                }
+                closestCar = otherCar;
+                closestDistance = distance;
             }
+        }
+
+        if (closestCar != null)
+        { 
+            myCarScript.carToFollow = closestCar.GetComponent<CarController>();
+            AIP1TrafficCar otherCarScript = closestCar.GetComponent<AIP1TrafficCar>(); // Get the script
+
+            if (!otherCarScript.IsBeingFollowed)
+            {
+                otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
+                otherCarScript.followingCar = my_Car;
+                return; // Exit loop after finding a car to follow
+            }
+            else
+            {
+                otherCarScript.followingCar.GetComponent<AIP1TrafficCar>().carToFollow = my_Car; // the car following the car I want to follow is going to follow me
+                otherCarScript.followingCar = my_Car;
+                return;
+            }
+            
         }
         if (myCarScript.carToFollow != null)
         {
