@@ -81,7 +81,7 @@ public class StateNode : IComparable<StateNode> {
         //A childnode can only differ in orientation from its parent by -45, 0 or 45 degrees
         
         //TODO TRY ROUNDING cost_to_come TO SOME SPECIFIC DECIMAL TO MAKE cost_to_come MORE EQUAL GIVEN ORIENTATION???
-
+        
         float parent_cost_to_come;
         float parent_orientation;
         

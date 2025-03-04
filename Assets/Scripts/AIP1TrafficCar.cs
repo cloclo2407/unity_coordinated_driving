@@ -87,7 +87,7 @@ public class AIP1TrafficCar : MonoBehaviour
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
         StateNode start_node = new StateNode(start_pos_global, 0f, goal_pos_global, null, m_MapManager, m_ObstacleMap);
         Q.Enqueue(start_node);
-
+        
         while (Q.Count != 0)
         {
             var current_node = Q.Dequeue();
