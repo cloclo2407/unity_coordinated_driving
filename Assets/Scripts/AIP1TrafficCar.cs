@@ -26,6 +26,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private List<MultiVehicleGoal> m_CurrentGoals;
     private CollisionAvoidance m_CollisionAvoidance;
     private Formation m_Formation;
+    private Intersection m_Intersection;
     
     private ImprovePath improvePath;
 
@@ -78,6 +79,7 @@ public class AIP1TrafficCar : MonoBehaviour
         my_rigidbody = GetComponent<Rigidbody>();
         m_CollisionAvoidance = new CollisionAvoidance();
         m_Formation = new Formation();
+        m_Intersection = new Intersection();
         
         improvePath = new ImprovePath();
 
@@ -344,9 +346,16 @@ public class AIP1TrafficCar : MonoBehaviour
                 Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
 
 
-                // this is how you control the car
-                //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
-                m_Car.Move(steering, acceleration, acceleration, 0f);
+                if (m_Intersection.HasToStop(m_Car, m_OtherCars))
+                {
+                    m_Car.Move(0f, 0f, 0f, 10f);
+                    Debug.Log("breaks");
+                }
+                else
+                {
+                    // this is how you control the car
+                    m_Car.Move(steering, acceleration, acceleration, 0f);
+                }
 
                 float distToPoint = 6;
                 if (currentPathIndex == path_of_points.Count()-1)
