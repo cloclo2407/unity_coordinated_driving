@@ -8,13 +8,15 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 public class Intersection
 {
     float maxDistanceToStop = 10f;
+    float minAngleToStop = 40f;
+
     public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
     {
         foreach (var otherCar in m_OtherCars)
         {
             if (otherCar == myCar) continue; // skip self
 
-            if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.001f) continue; // ignore if the car is not moving
+            if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
 
             Vector3 otherPosition = otherCar.transform.position;
             AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
@@ -24,11 +26,14 @@ public class Intersection
             AIP1TrafficCar myCarScript = myCar.GetComponent<AIP1TrafficCar>(); // Get the script
             Vector3 myTarget = myCarScript.target_position;
 
+            float angle = Vector3.Angle(myTarget - myPosition, otherTarget - otherPosition);
+
             // Check for intersection
             if (SegmentsIntersect(myPosition, myTarget, otherPosition, otherTarget, out Vector3 intersection))
             {
-                // Check if the intersection is within 10 units from myPosition
-                if (Vector3.Distance(myPosition, intersection) <= maxDistanceToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex)
+                // Check if the intersection is within maxDistanceToStop units from myPosition
+                // and if you're not going into the same direction
+                if (Vector3.Distance(myPosition, intersection) <= maxDistanceToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && angle > minAngleToStop)
                 {
                     return true;
                 }

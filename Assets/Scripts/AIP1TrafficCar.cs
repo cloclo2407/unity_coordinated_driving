@@ -148,7 +148,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         //////////////////////////Catmull-Rom:
         path_of_points = improvePath.SmoothSplineCatmullRom(path_of_points, 5);
-        path_of_points = improvePath.simplifyPath(path_of_points, 0.1f);
+        path_of_points = improvePath.simplifyPath(path_of_points, 0.05f);
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
@@ -235,7 +235,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }*/
 
             //////////////////////////////////////////////////////////////
-        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count && myCarIndex >= 7 && myCarIndex < 12)
+        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count && myCarIndex >= 21)
         {
             // Get the car's current forward direction
             Vector3 forward = transform.forward;
@@ -373,7 +373,6 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             else 
             {
-                Debug.Log(myCarIndex + " is stuck");
                 if (!m_Intersection.HasToStop(m_Car, m_OtherCars)) // Check if you're stuck or if your're waiting for another car to go
                 {
                     // If you have an obstacle behind you go forward
@@ -385,7 +384,6 @@ public class AIP1TrafficCar : MonoBehaviour
                     else //go backwards
                     {
                         m_Car.Move(0f, -100f, -100f, 0f);
-                        Debug.Log("going backwards");
                     }
 
                     timeStuck -= 1;

@@ -77,6 +77,7 @@ public class Formation
     }
 
     // return true if the other car is in front of my car and their directions are similar and their velocity are similar
+    // and car closer to me than next point in path
     // Suppressed velocity for now
     private bool CanBeFollowed (Vector3 myPosition, Vector3 myVelocity, Vector3 otherPosition, Vector3 otherVelocity, Vector3 target_position)
     {
@@ -85,7 +86,11 @@ public class Formation
         float behind = Vector3.Dot(deltaPosition.normalized, otherVelocity.normalized);
         Vector3 my_direction = target_position - myPosition;
         float sameDirection = Vector3.Angle(my_direction.normalized, otherVelocity.normalized);
-        if (behind > 0 && sameDirection < minSameDirection  && deltaPosition.magnitude < maxDistance)
+
+        float distToTarget = my_direction.magnitude;
+        float distToCar = deltaPosition.magnitude;
+
+        if (behind > 0 && sameDirection < minSameDirection  && deltaPosition.magnitude < maxDistance && distToCar < distToTarget)
         {
             return true;
         }
