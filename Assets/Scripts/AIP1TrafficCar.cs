@@ -129,7 +129,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
 
             //else we keep looking:
-            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
+            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, goal_pos_global, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
             foreach (StateNode n in new_nodes)
             {
                 Q.Enqueue(n);
@@ -239,7 +239,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }*/
 
             //////////////////////////////////////////////////////////////
-        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count)
+        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count && myCarIndex >= 3 && myCarIndex < 7)
         {
             // Get the car's current forward direction
             Vector3 forward = transform.forward;
@@ -399,6 +399,10 @@ public class AIP1TrafficCar : MonoBehaviour
                     isStuck = false;
                 }
             }
+        }
+        else
+        {
+            m_Car.Move(0f, 0f, 0f, 10f);
         }
     }
 
