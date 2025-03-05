@@ -136,8 +136,6 @@ public class AIP1TrafficCar : MonoBehaviour
             } //Add all new nodes to the queue
         }
 
-        Debug.Log("Stopped looking for path (left the while-loop)");
-
         //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
         foreach (StateNode node in path_of_nodes)
         {
@@ -155,7 +153,6 @@ public class AIP1TrafficCar : MonoBehaviour
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
-        Debug.Log("Path of points contains :"+ path_of_points.Count + "points");
     }
 
 
@@ -368,7 +365,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 }
 
                  // If you're barely moving it means you're stuck
-                if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1 )
+                if (my_rigidbody.linearVelocity.magnitude < 0.5f )
                 {
                     timeStuck +=1;
                     if (timeStuck > 70) // If you're not moving for too long you're stuck
@@ -382,6 +379,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             else 
             {
+                Debug.Log(myCarIndex + " is stuck");
                 if (!m_Intersection.HasToStop(m_Car, m_OtherCars)) // Check if you're stuck or if your're waiting for another car to go
                 {
                     // If you have an obstacle behind you go forward
@@ -393,6 +391,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     else //go backwards
                     {
                         m_Car.Move(0f, -100f, -100f, 0f);
+                        Debug.Log("going backwards");
                     }
 
                     timeStuck -= 1;
