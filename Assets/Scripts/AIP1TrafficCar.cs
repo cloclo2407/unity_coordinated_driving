@@ -43,7 +43,6 @@ public class AIP1TrafficCar : MonoBehaviour
     private bool isStuck = false;
     private int timeStuck = 0;
     private float reverseDuration = 0;
-    private bool checkNewPoint = true;
 
 
     public bool drawTargets;
@@ -352,15 +351,10 @@ public class AIP1TrafficCar : MonoBehaviour
                     m_Car.Move(steering, acceleration, acceleration, 0f);
                 }
 
-                float distToPoint = 6;
-                if (currentPathIndex == path_of_points.Count()-1)
-                {
-                    distToPoint = 1;
-                }
+                float distToPoint = 4;
 
                     if (Vector3.Distance(target_position, transform.position) < distToPoint && carToFollow == null)
                 {
-                    checkNewPoint = true;
                     currentPathIndex++;
                 }
 
