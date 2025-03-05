@@ -235,7 +235,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }*/
 
             //////////////////////////////////////////////////////////////
-        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count && myCarIndex >= 21)
+        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count)
         {
             // Get the car's current forward direction
             Vector3 forward = transform.forward;
