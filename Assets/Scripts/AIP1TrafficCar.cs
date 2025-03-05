@@ -34,6 +34,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private List<Vector3> path_of_points = new List<Vector3>();
 
     private int currentPathIndex = 1;
+    public Vector3 target_position;
     public Vector3 target_velocity;
     public Vector3 old_target_pos;
     public Vector3 desired_velocity;
@@ -277,7 +278,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
             if (!isStuck)
             {
-                Vector3 target_position = path_of_points[currentPathIndex];
+                target_position = path_of_points[currentPathIndex];
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
                 old_target_pos = target_position;
 

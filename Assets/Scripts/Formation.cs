@@ -7,7 +7,7 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class Formation
 {
-    float minSameDirection = 35f; // how much too cars should have the same direction to start following each other (angle)
+    float minSameDirection = 40f; // how much too cars should have the same direction to start following each other (angle)
     float maxDeltaVelocity = 10f; // Maximum difference between the speed of two cars to start following each other
     float maxDistance = 20f;
 
