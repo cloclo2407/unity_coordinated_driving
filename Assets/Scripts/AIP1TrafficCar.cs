@@ -9,6 +9,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
+using UnityEditor;
 
 [RequireComponent(typeof(CarController))]
 public class AIP1TrafficCar : MonoBehaviour
@@ -200,20 +201,21 @@ public class AIP1TrafficCar : MonoBehaviour
     }
     */
 
-
     private void FixedUpdate()
     {   // Feel free to refer to any examples from previous assignments.
 
         if (smooth_path_of_points.Count == 0)
         { } //Goal reached, do nothing
         else
-        {   //Execute your path here
+        {
+            //Execute your path here
             Vector3 goal_pos_global = targetObjects[0].transform.position; //targetObjects is a list of one element for some reason
             Vector3 car_pos_global = transform.position;
             Vector3 goal_vector = car_pos_global - goal_pos_global;
             var distance_from_goal = goal_vector.magnitude;
             var target_position = smooth_path_of_points[0];
 
+            
             //Dynamic obstacle avoidance with RAYCASTS
             raycast_hit_positions.Clear();
             float scan_distance;
@@ -260,6 +262,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 waypoint_margin =
                     3f; // We only decrease waypoint_margin IF car_is_perpendicular = false AND we do not spot obstacles w. raycast.
             }
+            
 
             //Driving
             if (Vector3.Magnitude(car_pos_global - smooth_path_of_points[0]) < waypoint_margin)
@@ -279,6 +282,13 @@ public class AIP1TrafficCar : MonoBehaviour
                 m_Car.Move(steering + obstacle_avoiding_steering, acceleration, acceleration, 0f);
             }
         }
+    }
+    
+    private void OnDrawGizmos() // This method is called by the Unity Editor everytime FixedUpdate() runs.
+    {
+        // It must not be called by us during runtime, that will raise an error
+        Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+        Handles.DrawWireDisc(transform.position, Vector3.up, 2.5f);
     }
 
     private (float steering, float acceleration) ControlsTowardsPoint(Vector3 avg_pos)

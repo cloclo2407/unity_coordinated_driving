@@ -1,8 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Numerics;
 using Scripts.Map;
 using UnityEditor;
+using Quaternion = UnityEngine.Quaternion;
+using Vector3 = UnityEngine.Vector3;
 
 public class StateNode : IComparable<StateNode> { 
     //Inherits from IComparable<StateNode> in order to be able to compare two StateNodes, see CompareTo() method below.
@@ -72,7 +75,7 @@ public class StateNode : IComparable<StateNode> {
         // Sounds slightly computationally expensive to me :l
         
         //this.close_to_used_wp_penalty = (used_waypoints.Contains(cell_position) ? 10f : 0f); //If reused waypoint, cost+=10
-        this.close_to_obstacle_penalty = calculatePenalty(obstacleMap);
+        this.close_to_obstacle_penalty = calculatePenalty();
         this.combined_cost = this.cost_to_come + this.cost_to_go + this.close_to_obstacle_penalty; //+ this.close_to_used_wp_penalty; //+ turning_penalty;
     }
 
@@ -88,41 +91,15 @@ public class StateNode : IComparable<StateNode> {
         }
     }
     
-    private float calculatePenalty(ObstacleMap obstacleMap)
-    {   // Uses checkCellListForObstacles to see how many obstacles are at a distance of one cell away from this.cell_position
-        // At 1 cell away from this cell, we have 8 cells
-        List<Vector3Int> cells_one_cell_away = new List<Vector3Int>() {
-            new Vector3Int(-1, 0, 0)+this.cell_position, //left of this.cell_position
-            new Vector3Int(1, 0, 0)+this.cell_position,  //right of this.cell_position
-            new Vector3Int(0, 0, -1)+this.cell_position, //below this.cell_position
-            new Vector3Int(0, 0, 1)+this.cell_position,  //above this.cell_position
-            
-            new Vector3Int(1, 0, 1)+this.cell_position,  //northeast of this.cell_position
-            new Vector3Int(-1, 0, 1)+this.cell_position, //northwest of this.cell_position
-            new Vector3Int(1, 0, -1)+this.cell_position, //southeast of this.cell_position
-            new Vector3Int(-1, 0, -1)+this.cell_position //southwest of this.cell_position
-        };
-        var free_cells = checkCellListForObstacles(cells_one_cell_away, obstacleMap);
-        var number_of_obstacles_one_cell_away = cells_one_cell_away.Count - free_cells.Count;
-        float penalty_multiplier = 100f;
+    private float calculatePenalty()
+    {   // Calculates and sets close_to_obstacle_penalty for a new StateNode
         
-        // TODO Check for
-        // TODO obstacles two
-        // TODO cells away?
-        
-        return number_of_obstacles_one_cell_away * penalty_multiplier;
-    }
-    
-    private List<Vector3Int> checkCellListForObstacles(List<Vector3Int> cellList, ObstacleMap obstacleMap)
-    {
-        List<Vector3Int> unoccupied_cells = new List<Vector3Int>();
+        // Get all colliders within the sphere
+        //Collider[] hit_colliders = Physics.OverlapSphere(this.world_position, 2.5f, LayerMask.GetMask("Obstacle"));
 
-        foreach (Vector3Int cell in cellList) {
-            var obstacles_in_cell = obstacleMap.GetObstaclesPerCell(cell);
-            if (obstacles_in_cell.Count == 0) // if obstacle in cell, discard potential_headings[i] as valid heading by doing nothing 
-            { unoccupied_cells.Add(cell); }
-        }
-        return unoccupied_cells;
+        
+        
+        return 0;
     }
 
     public List<StateNode> makeChildNodes(Dictionary<Vector3Int, StateNode> visited_nodes, PriorityQueue Q, Vector3 global_goal_pos, MapManager mapManager, ObstacleMap obstacleMap, float cellength, String vehicle)
@@ -334,31 +311,22 @@ public class StateNode : IComparable<StateNode> {
     }
 
     private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements, ObstacleMap obstacleMap)
-    {
+    {   //This method goes through every potential movement and sweeps a Sphere from this.world_pos to potential_new_pos
+        //The sphere has radius 2.5f which just about covers the car, and ensures that chosen waypoints and the paths 
+        //between them are free of obstacles.
         List<Tuple<Vector3, float>> valid_movements = new List<Tuple<Vector3, float>>();
 
         for (int i = 0; i < potential_movements.Count; i++)
         {
             var potential_new_position = this.world_position + potential_movements[i].Item1; //Access first element in tuple by calling .Item1
-            var potential_new_cell = obstacleMap.WorldToCell(potential_new_position);
-            var obstacles_in_new_cell = obstacleMap.GetObstaclesPerCell(potential_new_cell);
+            Vector3 direction = (potential_new_position - this.world_position).normalized; //Normalize heading to get direction vector
+            float distance = Vector3.Distance(potential_new_position, this.world_position);
             
-            //Debug.Log("Checking for obstacles at position "+potential_new_position+" and orientation "+potential_movements[i].Item2);
-
-            if (obstacles_in_new_cell.Count > 0) // if obstacle in cell, discard potential_headings[i] as valid heading by doing nothing 
-            { //Debug.Log("Obstacle found at position, discarding potential movement");
-              continue; }
-            
-            // If no obstacle in new potential cell, check in between cells:
-            Vector3 direction = potential_movements[i].Item1.normalized; //Normalize heading to get direction vector
-            float distance = Vector3.Distance(this.world_position, potential_new_position);
-            if (Physics.Raycast(this.world_position, direction, distance) == false)
-            {   //No obstacle in between cells, also no obstacle at new cell, so we add this heading as a valid heading
-                valid_movements.Add(potential_movements[i]);
-            }
-            else
+            RaycastHit hit; //Compiler gets mad at me if I don't claim the hit-object
+            if (Physics.SphereCast(this.world_position, 2.5f, direction, out hit, distance, 
+                    LayerMask.GetMask("Obstacle")) == false)
             {
-                //Debug.Log("Obstacle found via raycast, discarding potential movement");
+                valid_movements.Add(potential_movements[i]);
             }
         }
         //Debug.Log("valid_movements: "+valid_movements.Count);

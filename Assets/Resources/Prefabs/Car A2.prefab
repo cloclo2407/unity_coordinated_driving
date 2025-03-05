@@ -104,9 +104,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0615546388c46a68ca4014cce1578b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  drawTargets: 0
+  drawAllCars: 0
+  drawTeamCars: 0
   steering: 0
   acceleration: 0
   targetObjects: []
+  teamVehicles: []
 --- !u!114 &-1240518562638055830
 MonoBehaviour:
   m_ObjectHideFlags: 0
