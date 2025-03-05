@@ -288,31 +288,18 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
 
                     target_position = carToFollow.transform.position;
-                    Vector3 new_target = (target_position - transform.position) * 0.8f ; // Aim for behind the car to not hit it
-                    target_position = new_target + transform.position;
-
                     target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity;
 
-
-                    /*// Get carToFollow's position and forward direction
-                    Vector3 followPosition = carToFollow.transform.position;
-                    Vector3 followDirection = carToFollow.transform.forward;
-
-                    // Place the target a safe distance behind the car we're following
-                    target_position = followPosition - (followDirection * safeFollowDistance);
-
-                    // target_velocity = carToFollow.GetComponent<Rigidbody>().velocity; (Uncomment if needed)
-                    target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-                    */
+                    target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car                         
                 }
 
 
                 float distance = Vector3.Distance(target_position, transform.position);
 
 
-                // Scale k_p and k_d based on distance  between 1 and 10
+                // Scale k_p and k_d based on distance between 1 and 10
                 float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
-                float k_p_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
+                float k_p_dynamic = Mathf.Lerp(2f, 6f, scaleFactor / 4f);
                 float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
 
                 float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
@@ -326,8 +313,6 @@ public class AIP1TrafficCar : MonoBehaviour
                 float steering = Vector3.Dot(desired_acceleration, transform.right);
                 float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
 
-                //Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
-                //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
                 Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized*5, Color.yellow);
 
                 // Turn if you're too close to an obstacle
