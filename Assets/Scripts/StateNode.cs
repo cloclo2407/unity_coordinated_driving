@@ -12,6 +12,7 @@ public class StateNode : IComparable<StateNode> {
     //StateNode-objects are used to keep track of states/ nodes/ positions we visit while constructing a path
     public Vector3 world_position; //other way of saying global_position
     public float orientation; //Orientation around y-axis at this node, in degrees. Remember Unity uses left-handed coord. sys.
+    private Vector3 goal_world_position;
     public Vector3Int cell_position;
     public StateNode parent_node;
     public float cost_to_come;
@@ -47,7 +48,7 @@ public class StateNode : IComparable<StateNode> {
         //this.local_position = local_position;
         this.world_position = world_position;
         this.orientation = orientation;
-        //this.goal_world_position = goal_world_position;
+        this.goal_world_position = goal_world_pos;
         this.cell_position = obstacleMap.WorldToCell(world_position);
         this.parent_node = parent_node;
         calculateCostToCome(); //setting this.cost_to_come as length of the path leading up to this node
@@ -248,7 +249,7 @@ public class StateNode : IComparable<StateNode> {
             }
         }
         
-        var valid_movements = this.checkForObstacles(potential_movements, obstacleMap);
+        var valid_movements = this.checkForObstacles(potential_movements, mapManager);
 
         foreach (var valid_movement in valid_movements)
         {
@@ -323,14 +324,16 @@ public class StateNode : IComparable<StateNode> {
         return childnodes_list;
     }
 
-    private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements, ObstacleMap obstacleMap)
+    private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements, MapManager mapManager)
     {   //This method goes through every potential movement and sweeps a Sphere from this.world_pos to potential_new_pos
         //The sphere has radius 2.5f which just about covers the car, and ensures that chosen waypoints and the paths 
-        //between them are free of obstacles.
+        //between them are free of obstacles. It also discards new positions too close to other cars' goal positions.
         List<Tuple<Vector3, float>> valid_movements = new List<Tuple<Vector3, float>>();
+        var all_goal_pos = mapManager.targetPositions;
 
         for (int i = 0; i < potential_movements.Count; i++)
         {
+            bool valid_movement = true;
             var potential_new_position = this.world_position + potential_movements[i].Item1; //Access first element in tuple by calling .Item1
             Vector3 direction = (potential_new_position - this.world_position).normalized; //Normalize heading to get direction vector
             float distance = Vector3.Distance(potential_new_position, this.world_position);
@@ -339,8 +342,21 @@ public class StateNode : IComparable<StateNode> {
             if (Physics.SphereCast(this.world_position, 2.5f, direction, out hit, distance, 
                     LayerMask.GetMask("Obstacle")) == false)
             {
-                valid_movements.Add(potential_movements[i]);
+                //Reaching this point means the new waypoint is free of obstacles, but is it near another car's goal?
+                for (int j = 0; j < all_goal_pos.Count; j++)
+                {
+                    if ((Vector3.Distance(potential_new_position, all_goal_pos[j]) < 7f) && all_goal_pos[j] != this.goal_world_position)
+                    {
+                        valid_movement = false; //Don't add this potential_movement to valid_movements
+                        break; //Start checking next potential_movement
+                    }
+                }
+                
             }
+            else //SphereCast found obstacles between this.world_pos and potential_new_pos
+            { valid_movement = false; }
+            
+            if (valid_movement == true) valid_movements.Add(potential_movements[i]);
         }
         //Debug.Log("valid_movements: "+valid_movements.Count);
         return valid_movements;
