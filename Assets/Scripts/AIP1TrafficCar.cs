@@ -15,7 +15,7 @@ public class AIP1TrafficCar : MonoBehaviour
 {
     public static int carCounter = 0; //This field belongs to the class/type, not to any specific object of the class
     //It is used to give an index to the specific car clone that has this script attached.
-    private int myCarIndex; //This car's specific index
+    public int myCarIndex; //This car's specific index
     
     private CarController m_Car; // the car controller we want to use
     private BoxCollider carCollider; //unused BoxCollider
@@ -29,7 +29,6 @@ public class AIP1TrafficCar : MonoBehaviour
     private Intersection m_Intersection;
     
     private ImprovePath improvePath;
-
 
     private List<StateNode> path_of_nodes = new List<StateNode>();
     private List<Vector3> path_of_points = new List<Vector3>();

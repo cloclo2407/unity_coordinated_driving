@@ -26,7 +26,7 @@ public class Intersection
             if (SegmentsIntersect(myPosition, myTarget, otherPosition, otherTarget, out Vector3 intersection))
             {
                 // Check if the intersection is within 10 units from myPosition
-                if (Vector3.Distance(myPosition, intersection) <= maxDistanceToStop)
+                if (Vector3.Distance(myPosition, intersection) <= maxDistanceToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex)
                 {
                     return true;
                 }
