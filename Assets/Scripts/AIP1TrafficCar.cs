@@ -239,7 +239,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }*/
 
             //////////////////////////////////////////////////////////////
-        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count && myCarIndex >= 3 && myCarIndex < 7)
+        if (path_of_points.Count != 0 && currentPathIndex < path_of_points.Count && myCarIndex >= 7 && myCarIndex < 12)
         {
             // Get the car's current forward direction
             Vector3 forward = transform.forward;
@@ -380,29 +380,32 @@ public class AIP1TrafficCar : MonoBehaviour
                 }
 
             }
-            else
+            else 
             {
-                // If you have an obstacle behind you go forward
-                if (obsBackClose || obsBackRightClose || obsBackLeftClose)
+                if (!m_Intersection.HasToStop(m_Car, m_OtherCars)) // Check if you're stuck or if your're waiting for another car to go
                 {
-                    m_Car.Move(0f, 100f, 100f, 0f);                
-                }
+                    // If you have an obstacle behind you go forward
+                    if (obsBackClose || obsBackRightClose || obsBackLeftClose)
+                    {
+                        m_Car.Move(0f, 100f, 100f, 0f);
+                    }
 
-                else //go backwards
-                {
-                    m_Car.Move(0f, -100f, -100f, 0f);
-                }
-                
-                timeStuck -=1 ;
-                if (timeStuck == 0)
-                {
-                    isStuck = false;
+                    else //go backwards
+                    {
+                        m_Car.Move(0f, -100f, -100f, 0f);
+                    }
+
+                    timeStuck -= 1;
+                    if (timeStuck == 0)
+                    {
+                        isStuck = false;
+                    }
                 }
             }
         }
         else
         {
-            m_Car.Move(0f, 0f, 0f, 10f);
+            m_Car.Move(0f, 0f, 0f, 100f);
         }
     }
 
