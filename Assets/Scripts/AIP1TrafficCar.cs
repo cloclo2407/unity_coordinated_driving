@@ -348,7 +348,6 @@ public class AIP1TrafficCar : MonoBehaviour
                 if (m_Intersection.HasToStop(m_Car, m_OtherCars))
                 {
                     m_Car.Move(0f, 0f, 0f, 10f);
-                    Debug.Log("breaks");
                 }
                 else
                 {
