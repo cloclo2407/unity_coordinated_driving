@@ -22,7 +22,7 @@ public class AIP1TrafficCar : MonoBehaviour
     public static int carCounter = 0; //This field belongs to the class/type, not to any specific object of the class
 
     //It is used to give an index to the specific car clone that has this script attached.
-    private int myCarIndex; //This car's specific index in array of agents m_OtherCars (includes this car!)
+    public int myCarIndex; //This car's specific index in array of agents m_OtherCars (includes this car!)
     private int crazyCarIndex = 1; //For debugging when a specific car is acting crazy
     private float waiting_multiplier = 0f;
     private bool start_moving = false;
@@ -35,13 +35,18 @@ public class AIP1TrafficCar : MonoBehaviour
     private ObstacleMap m_ObstacleMap;
     private GameObject[] m_OtherCars;
     private List<MultiVehicleGoal> m_CurrentGoals;
+
     private ImprovePath m_improvePath;
     private Orca m_Orca;
-
+    private CollisionAvoidance m_CollisionAvoidance;
+    private Formation m_Formation;
+    private Intersection m_Intersection;
+    
     private List<StateNode> path_of_nodes = new List<StateNode>();
     private List<Vector3> path_of_points = new List<Vector3>();
 
     private int currentPathIndex = 1;
+    public Vector3 target_position;
     public Vector3 target_velocity;
     public Vector3 old_target_pos;
     public float k_p = 1f;
@@ -53,6 +58,10 @@ public class AIP1TrafficCar : MonoBehaviour
     public bool drawTargets;
     public bool drawAllCars;
     public bool drawTeamCars;
+
+    public bool IsBeingFollowed = false;
+    public CarController followingCar = null;
+    public CarController carToFollow = null;
 
     //For driving:
     private float waypoint_margin = 3f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
@@ -79,7 +88,11 @@ public class AIP1TrafficCar : MonoBehaviour
     {
         m_Car = GetComponent<CarController>();
         my_rigidbody = GetComponent<Rigidbody>();
+
         m_improvePath = new ImprovePath();
+        m_CollisionAvoidance = new CollisionAvoidance();
+        m_Formation = new Formation();
+        m_Intersection = new Intersection();
         
         m_MapManager = FindFirstObjectByType<MapManager>();
         Vector3 cell_scale = Vector3.one * 3f;
@@ -126,8 +139,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
 
             //else we keep looking:
-            List<StateNode> new_nodes =
-                current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
+            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, goal_pos_global, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
             foreach (StateNode n in new_nodes)
             {
                 Q.Enqueue(n);
@@ -141,13 +153,11 @@ public class AIP1TrafficCar : MonoBehaviour
         }
 
         // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
-        if (myCarIndex == crazyCarIndex)
-        {
-            for (int i = 0; i < path_of_points.Count - 1; i++) {
-                // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
-                Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f);
-            }   
-        }
+        for (int i = 0; i < path_of_points.Count - 1; i++) {
+            // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
+            Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f);
+        }   
+       
 
         //////////////////////////Catmull-Rom:
         path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
@@ -166,6 +176,7 @@ public class AIP1TrafficCar : MonoBehaviour
         yield return new WaitForSeconds(myCarIndex * waiting_multiplier);
         //Fixedupdate runs while start is waiting so we need to define a flag that forbids update from driving while Start is waiting
         this.start_moving = true;
+
     }
 
     private void FixedUpdate()
@@ -225,67 +236,119 @@ public class AIP1TrafficCar : MonoBehaviour
         Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
         Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue); */
 
+
         if (!isStuck)
-        {
-            Vector3 target_position; //Why is target_position local to this scope, but target_velocity is an attribute of the class?
-            
+        {            
             if (orca_velocity != Vector3.zero)
             {
                 target_position = transform.position + orca_velocity;
                 target_velocity = orca_velocity;
             }
-            else
+
+            else 
             {
-                target_position = path_of_points[currentPathIndex]; 
+                target_position = path_of_points[currentPathIndex];
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+                old_target_pos = target_position;
+
+                m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+                float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
+
+                if (carToFollow != null)
+                {
+
+                    target_position = carToFollow.transform.position;
+                    target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity;
+
+                    target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car                         
+                }
+
+                float distance = Vector3.Distance(target_position, transform.position);
+
+                // Scale k_p and k_d based on distance between 1 and 10
+                float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
+                float k_p_dynamic = Mathf.Lerp(2f, 6f, scaleFactor / 4f);
+                float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
+
+                float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
+                Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
+
+                // a PD-controller to get desired acceleration from errors in position and velocity
+                Vector3 position_error = target_position - transform.position;
+                Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
+                Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
+
+                float steering = Vector3.Dot(desired_acceleration, transform.right);
+                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+
+                Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
+
+                // Turn if you're too close to an obstacle
+                if (acceleration > 0)
+                {
+                    if (obsLeftClose)
+                    {
+                        steering -= 5;
+                    }
+                    else if (obsRightClose)
+                    {
+                        steering += 5;
+                    }
+                }
+
+                else
+                {
+                    if (obsBackLeftClose)
+                    {
+                        steering += 5;
+                    }
+                    else if (obsBackRightClose)
+                    {
+                        steering -= 5;
+                    }
+                }
+
+                Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
+
+
+                if (m_Intersection.HasToStop(m_Car, m_OtherCars))
+                {
+                    m_Car.Move(0f, 0f, 0f, 10f);
+                }
+                else
+                {
+                    // this is how you control the car
+                    m_Car.Move(steering, acceleration, acceleration, 0f);
+                }
+
+                float distToPoint = 6f;
+
+                if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
+                {
+                    currentPathIndex++;
+                    if (currentPathIndex == path_of_points.Count - 1)
+                    { distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
+
+                    if (currentPathIndex == path_of_points.Count) { goal_reached = true; }
+                }
+
+                // If you're barely moving it means you're stuck
+                if (my_rigidbody.linearVelocity.magnitude < 0.5f)
+                {
+                    timeStuck += 1;
+                    if (timeStuck > 70) // If you're not moving for too long you're stuck
+                    {
+                        isStuck = true;
+                    }
+                }
             }
             
             Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity
             Debug.DrawLine(transform.position, path_of_points[currentPathIndex], Color.black); //Draws black line to waypoint on path
             
-            old_target_pos = target_position;
-
-            float distance = Vector3.Distance(target_position, transform.position);
-
-            // Scale k_p and k_d based on distance  between 1 and 10
-            float scaleFactor = Mathf.Clamp(distance / 5f, 2f, 8f); // Adjust 5f to control sensitivity
-            float k_p_dynamic = Mathf.Lerp(2f, 5f, scaleFactor / 5f);
-            float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
-
-            float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f); // New gain factor for velocity feedback
-            Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
-
-            // a PD-controller to get desired acceleration from errors in position and velocity
-            Vector3 position_error = target_position - transform.position;
-            Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
-            Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
-
-            float steering = Vector3.Dot(desired_acceleration, transform.right);
-            float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
-
             //Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
             //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
             //Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
-
-            // Turn if you're too close to an obstacle
-            if (obsRightClose) steering += 10;
-            if (obsLeftClose) steering -= 10;
-            if (obsBackRightClose) steering += 10;
-            if (obsBackLeftClose) steering -= 10;
-
-            // this is how you control the car
-            //Debug.Log("Steering:" + steering + " Acceleration:" + acceleration);
-            m_Car.Move(steering, acceleration, acceleration, 0f);
-
-            float distToPoint = 6.8f;
-            if (currentPathIndex == path_of_points.Count - 1)
-            { distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
-
-            if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
-            {
-                currentPathIndex++;
-                if (currentPathIndex == path_of_points.Count) {goal_reached = true;}
-            }
 
             // If you're barely moving it means you're stuck
             if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1)
@@ -296,13 +359,44 @@ public class AIP1TrafficCar : MonoBehaviour
         }
         else //if stuck:
         {
-            // If you have an obstacle behind you go forward
-            if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 100f, 100f, 0f);
-            else m_Car.Move(0f, -100f, -100f, 0f); //go backwards
+            if (!m_Intersection.HasToStop(m_Car, m_OtherCars)) // Check if you're stuck or if your're waiting for another car to go
+            {
+                // If you have an obstacle behind you go forward
+                if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 100f, 100f, 0f);
+                else m_Car.Move(0f, -100f, -100f, 0f); //go backwards
 
-            timeStuck -= 1;
-            if (timeStuck == 0) isStuck = false;
+                timeStuck -= 1;
+                if (timeStuck == 0) isStuck = false;
+            }
+            else
+            {
+                m_Car.Move(0f, 0f, 0f, 100f);
+            }
         }
+    }
+
+    private int FindNearestForwardIndex(Vector3 currentPosition, int startIndex, float searchRadius)
+    {
+        int nearestIndex = startIndex;
+        float smallestDistance = float.MaxValue;
+        Vector3 carForward = transform.forward;
+
+        for (int i = startIndex; i < path_of_points.Count; i++)
+        {
+            Vector3 toPathPoint = path_of_points[i] - currentPosition;
+            float distance = toPathPoint.magnitude;
+
+            // Consider points that are somewhat in front of the car
+            if (Vector3.Dot(toPathPoint.normalized, carForward) > 0f)
+            {
+                if (distance < smallestDistance && distance < searchRadius)
+                {
+                    smallestDistance = distance;
+                    nearestIndex = i;
+                }
+            }
+        }
+        return Mathf.Max(nearestIndex, currentPathIndex);
     }
 
 }

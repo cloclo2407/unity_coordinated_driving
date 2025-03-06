@@ -104,11 +104,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0615546388c46a68ca4014cce1578b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  target_velocity: {x: 0, y: 0, z: 0}
-  old_target_pos: {x: 0, y: 0, z: 0}
-  desired_velocity: {x: 0, y: 0, z: 0}
-  k_p: 1
-  k_d: 2
   drawTargets: 0
   drawAllCars: 0
   drawTeamCars: 0

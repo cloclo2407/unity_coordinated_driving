@@ -1,14 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Numerics;
 using Scripts.Map;
+using UnityEditor;
+using Quaternion = UnityEngine.Quaternion;
+using Vector3 = UnityEngine.Vector3;
 
 public class StateNode : IComparable<StateNode> { 
     //Inherits from IComparable<StateNode> in order to be able to compare two StateNodes, see CompareTo() method below.
     //StateNode-objects are used to keep track of states/ nodes/ positions we visit while constructing a path
     public Vector3 world_position; //other way of saying global_position
     public float orientation; //Orientation around y-axis at this node, in degrees. Remember Unity uses left-handed coord. sys.
-    public Vector3 goal_world_position;
+    private Vector3 goal_world_position;
     public Vector3Int cell_position;
     public StateNode parent_node;
     public float cost_to_come;
@@ -39,18 +43,18 @@ public class StateNode : IComparable<StateNode> {
     */
     
     //Constructor method:
-    public StateNode(Vector3 world_position, float orientation, Vector3 goal_world_position, StateNode parent_node, MapManager mapManager, ObstacleMap obstacleMap)
+    public StateNode(Vector3 world_position, float orientation, Vector3 goal_world_pos, StateNode parent_node, MapManager mapManager, ObstacleMap obstacleMap)
     {
         //this.local_position = local_position;
         this.world_position = world_position;
         this.orientation = orientation;
-        this.goal_world_position = goal_world_position;
+        this.goal_world_position = goal_world_pos;
         this.cell_position = obstacleMap.WorldToCell(world_position);
         this.parent_node = parent_node;
-        this.cost_to_come = calculateCostToCome(); //setting cost_to_come = number of parent nodes
+        calculateCostToCome(); //setting this.cost_to_come as length of the path leading up to this node
         // Vector3 has x,y,z-components of type float. Math.Pow() takes doubles and returns double. Math.Sqrt() takes double and returns double.
         // (float) converts the double returned by the Math functions to float.
-        float euclidean_distance_to_goal = (float)( Math.Sqrt(  Math.Pow(goal_world_position.x - this.world_position.x, 2d) + Math.Pow(goal_world_position.z - this.world_position.z, 2d)  ) );
+        float euclidean_distance_to_goal = (float)( Math.Sqrt(  Math.Pow(goal_world_pos.x - this.world_position.x, 2d) + Math.Pow(goal_world_pos.z - this.world_position.z, 2d)  ) );
         //float weighted_euclidean_distance = euclidean_distance_to_goal * 0.2f; //If weight>1 A* prioritises sticking closer to goal, if weight<1 A* prioritises it less
         //float manhattan_distance_to_goal = Mathf.Abs(goal_world_pos.x - world_position.x) + Mathf.Abs(goal_world_pos.z - world_position.z);
         //float chebyshev_distance_to_goal = Mathf.Max(Mathf.Abs(goal_world_pos.x - world_position.x), Mathf.Abs(goal_world_pos.z - world_position.z));
@@ -72,60 +76,47 @@ public class StateNode : IComparable<StateNode> {
         // Sounds slightly computationally expensive to me :l
         
         //this.close_to_used_wp_penalty = (used_waypoints.Contains(cell_position) ? 10f : 0f); //If reused waypoint, cost+=10
-        this.close_to_obstacle_penalty = calculatePenalty(obstacleMap);
+        this.close_to_obstacle_penalty = calculatePenalty();
         this.combined_cost = this.cost_to_come + this.cost_to_go + this.close_to_obstacle_penalty; //+ this.close_to_used_wp_penalty; //+ turning_penalty;
     }
 
-    private float calculateCostToCome()
-    { //Returns cost_to_come as the number of parent nodes of this
-        int parentcounter = 0;
-        StateNode current = this;
-        while (current.parent_node != null)
+    private void calculateCostToCome()
+    { //Calculates cost_to_come as the length of the path so far
+        
+        if (this.parent_node == null) //This is the root node/ starting node, cost to come here is 0.
+        { this.cost_to_come = 0f; }
+        
+        else //This is not the root node
         {
-            parentcounter++;
-            current = current.parent_node; //point current at parent to check the parent of parent
+            this.cost_to_come = parent_node.cost_to_come + Vector3.Distance(this.parent_node.world_position, this.world_position);
         }
-        return parentcounter;
     }
     
-    private float calculatePenalty(ObstacleMap obstacleMap)
-    {   // Uses checkCellListForObstacles to see how many obstacles are at a distance of one cell away from this.cell_position
-        // At 1 cell away from this cell, we have 8 cells
-        List<Vector3Int> cells_one_cell_away = new List<Vector3Int>() {
-            new Vector3Int(-1, 0, 0)+this.cell_position, //left of this.cell_position
-            new Vector3Int(1, 0, 0)+this.cell_position,  //right of this.cell_position
-            new Vector3Int(0, 0, -1)+this.cell_position, //below this.cell_position
-            new Vector3Int(0, 0, 1)+this.cell_position,  //above this.cell_position
-            
-            new Vector3Int(1, 0, 1)+this.cell_position,  //northeast of this.cell_position
-            new Vector3Int(-1, 0, 1)+this.cell_position, //northwest of this.cell_position
-            new Vector3Int(1, 0, -1)+this.cell_position, //southeast of this.cell_position
-            new Vector3Int(-1, 0, -1)+this.cell_position //southwest of this.cell_position
-        };
-        var free_cells = checkCellListForObstacles(cells_one_cell_away, obstacleMap);
-        var number_of_obstacles_one_cell_away = cells_one_cell_away.Count - free_cells.Count;
-        float penalty_multiplier = 100f;
+    private float calculatePenalty()
+    {   // Calculates and sets close_to_obstacle_penalty for a new StateNode
         
-        // TODO Check for
-        // TODO obstacles two
-        // TODO cells away?
-        
-        return number_of_obstacles_one_cell_away * penalty_multiplier;
-    }
-    
-    private List<Vector3Int> checkCellListForObstacles(List<Vector3Int> cellList, ObstacleMap obstacleMap)
-    {
-        List<Vector3Int> unoccupied_cells = new List<Vector3Int>();
+        // Get all colliders within the sphere
+        Collider[] hit_colliders = Physics.OverlapSphere(this.world_position, 6.5f, LayerMask.GetMask("Obstacle"));
 
-        foreach (Vector3Int cell in cellList) {
-            var obstacles_in_cell = obstacleMap.GetObstaclesPerCell(cell);
-            if (obstacles_in_cell.Count == 0) // if obstacle in cell, discard potential_headings[i] as valid heading by doing nothing 
-            { unoccupied_cells.Add(cell); }
+        if (hit_colliders.Length == 0) return 0f; //If no obstacles in this sphere, close_to_obstacle_penalty = 0f;
+        
+        // Initialize variables to store the closest hit info
+        float min_hit_distance = Mathf.Infinity;
+
+        // Iterate through each collider to find the closest hit point
+        foreach (Collider col in hit_colliders)
+        {
+            // Get the closest point on the collider to the origin.
+            Vector3 hit_point = col.ClosestPoint(this.world_position);
+            float hit_distance = Vector3.Distance(hit_point, this.world_position);
+
+            if (hit_distance < min_hit_distance) min_hit_distance = hit_distance;
         }
-        return unoccupied_cells;
+        
+        return (1/min_hit_distance)*200f; //The smaller the distance to closest obstacle, the higher the penalty cost
     }
 
-    public List<StateNode> makeChildNodes(Dictionary<Vector3Int, StateNode> visited_nodes, PriorityQueue Q, MapManager mapManager, ObstacleMap obstacleMap, float cellength, String vehicle)
+    public List<StateNode> makeChildNodes(Dictionary<Vector3Int, StateNode> visited_nodes, PriorityQueue Q, Vector3 global_goal_pos, MapManager mapManager, ObstacleMap obstacleMap, float cellength, String vehicle)
     { // Returns list of childnodes that point to this, the parent node
         List<StateNode> childnodes_list = new List<StateNode>();
 
@@ -258,13 +249,13 @@ public class StateNode : IComparable<StateNode> {
             }
         }
         
-        var valid_movements = this.checkForObstacles(potential_movements, obstacleMap);
+        var valid_movements = this.checkForObstacles(potential_movements, mapManager);
 
         foreach (var valid_movement in valid_movements)
         {
             var new_position = this.world_position + valid_movement.Item1;
             var new_orientation = valid_movement.Item2;
-            StateNode new_node = new StateNode(new_position, new_orientation, this.goal_world_position, this, mapManager, obstacleMap);
+            StateNode new_node = new StateNode(new_position, new_orientation, global_goal_pos, this, mapManager, obstacleMap);
             
             //I want to draw out all positions we visit to get a feel of how A* explores the space:
             //Debug.DrawLine(this.world_position, new_position, Color.green, 1000f);
@@ -333,42 +324,47 @@ public class StateNode : IComparable<StateNode> {
         return childnodes_list;
     }
 
-    private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements, ObstacleMap obstacleMap)
-    {
+    private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements, MapManager mapManager)
+    {   //This method goes through every potential movement and sweeps a Sphere from this.world_pos to potential_new_pos
+        //The sphere has radius 2.5f which just about covers the car, and ensures that chosen waypoints and the paths 
+        //between them are free of obstacles. It also discards new positions too close to other cars' goal positions.
         List<Tuple<Vector3, float>> valid_movements = new List<Tuple<Vector3, float>>();
+        var all_goal_pos = mapManager.targetPositions;
 
         for (int i = 0; i < potential_movements.Count; i++)
         {
+            bool valid_movement = true;
             var potential_new_position = this.world_position + potential_movements[i].Item1; //Access first element in tuple by calling .Item1
-            var potential_new_cell = obstacleMap.WorldToCell(potential_new_position);
-            var obstacles_in_new_cell = obstacleMap.GetObstaclesPerCell(potential_new_cell);
+            Vector3 direction = (potential_new_position - this.world_position).normalized; //Normalize heading to get direction vector
+            float distance = Vector3.Distance(potential_new_position, this.world_position);
             
-            //Debug.Log("Checking for obstacles at position "+potential_new_position+" and orientation "+potential_movements[i].Item2);
-
-            if (obstacles_in_new_cell.Count > 0) // if obstacle in cell, discard potential_headings[i] as valid heading by doing nothing 
-            { //Debug.Log("Obstacle found at position, discarding potential movement");
-              continue; }
-            
-            // If no obstacle in new potential cell, check in between cells:
-            Vector3 direction = potential_movements[i].Item1.normalized; //Normalize heading to get direction vector
-            float distance = Vector3.Distance(this.world_position, potential_new_position);
-            if (Physics.Raycast(this.world_position, direction, distance) == false)
-            {   //No obstacle in between cells, also no obstacle at new cell, so we add this heading as a valid heading
-                valid_movements.Add(potential_movements[i]);
-            }
-            else
+            RaycastHit hit; //Compiler gets mad at me if I don't claim the hit-object
+            if (Physics.SphereCast(this.world_position, 2.5f, direction, out hit, distance, 
+                    LayerMask.GetMask("Obstacle")) == false)
             {
-                //Debug.Log("Obstacle found via raycast, discarding potential movement");
+                //Reaching this point means the new waypoint is free of obstacles, but is it near another car's goal?
+                for (int j = 0; j < all_goal_pos.Count; j++)
+                {
+                    if ((Vector3.Distance(potential_new_position, all_goal_pos[j]) < 7f) && all_goal_pos[j] != this.goal_world_position)
+                    {
+                        valid_movement = false; //Don't add this potential_movement to valid_movements
+                        break; //Start checking next potential_movement
+                    }
+                }
+                
             }
+            else //SphereCast found obstacles between this.world_pos and potential_new_pos
+            { valid_movement = false; }
+            
+            if (valid_movement == true) valid_movements.Add(potential_movements[i]);
         }
         //Debug.Log("valid_movements: "+valid_movements.Count);
         return valid_movements;
     }
     
     public void fillPaths(List<StateNode> path_of_nodes, List<Vector3> path_of_points) 
-    {// Returns path containing this node and all of its parents
-        //Debug.Log("Generating path...");
-        
+
+    {// Returns path containing this node and all of its parents        
         path_of_nodes.Add(this);
         path_of_points.Add(this.world_position);
         
