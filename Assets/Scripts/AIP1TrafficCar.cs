@@ -67,6 +67,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private float waypoint_margin = 3f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
+    float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
 
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
@@ -218,43 +219,24 @@ public class AIP1TrafficCar : MonoBehaviour
                 target_position = transform.position + orca_velocity;
                 target_velocity = orca_velocity;
             }
-            else 
+            else // no collision to avoid with orca 
             {
                 target_position = path_of_points[currentPathIndex];
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
                 old_target_pos = target_position;
 
                 m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
-                float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
 
                 if (carToFollow != null)
                 {
-
                     target_position = carToFollow.transform.position;
                     target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity;
-
                     target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car                         
                 }
 
-                float distance = Vector3.Distance(target_position, transform.position);
-
-                // Scale k_p and k_d based on distance between 1 and 10
-                float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
-                float k_p_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
-                float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
-
-                float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
-                Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
-
-                // a PD-controller to get desired acceleration from errors in position and velocity
-                Vector3 position_error = target_position - transform.position;
-                Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
-                Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
-
-                float steering = Vector3.Dot(desired_acceleration, transform.right);
-                float acceleration = Vector3.Dot(desired_acceleration, transform.forward);
-
-                Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
+                float steering;
+                float acceleration;
+                PdTracker(out steering, out acceleration);
 
                 // Turn if you're too close to an obstacle
                 if (acceleration > 0)
@@ -265,8 +247,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 else
                 {
                     if (obsBackLeftClose) steering += 5;
-                    else if (obsBackRightClose) steering -= 5;
-                    
+                    else if (obsBackRightClose) steering -= 5;             
                 }
 
                 Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
@@ -310,7 +291,7 @@ public class AIP1TrafficCar : MonoBehaviour
             //Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
 
             // If you're barely moving it means you're stuck
-            if (my_rigidbody.linearVelocity.magnitude < 0.5f && currentPathIndex > 1)
+            if (my_rigidbody.linearVelocity.magnitude < 0.1f && currentPathIndex > 1)
             {
                 timeStuck += 1;
                 if (timeStuck > 70) isStuck = true; // If you're not moving for too long you're stuck
@@ -356,6 +337,30 @@ public class AIP1TrafficCar : MonoBehaviour
             }
         }
         return Mathf.Max(nearestIndex, currentPathIndex);
+    }
+
+    private void PdTracker(out float steering, out float acceleration)
+    {
+        float distance = Vector3.Distance(target_position, transform.position);
+
+        // Scale k_p and k_d based on distance between 1 and 10
+        float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
+        float k_p_dynamic = Mathf.Lerp(2f, 6f, scaleFactor / 6f);
+        float k_d_dynamic = Mathf.Lerp(2f, 6f, scaleFactor / 6f);
+
+        float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
+        Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
+
+        // a PD-controller to get desired acceleration from errors in position and velocity
+        Vector3 position_error = target_position - transform.position;
+        Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
+        Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
+
+        steering = Vector3.Dot(desired_acceleration, transform.right);
+        acceleration = Vector3.Dot(desired_acceleration, transform.forward);
+
+        Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
+
     }
 
     private void UpdateRaycast()
