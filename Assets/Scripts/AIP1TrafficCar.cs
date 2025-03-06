@@ -84,6 +84,12 @@ public class AIP1TrafficCar : MonoBehaviour
     public List<GameObject> targetObjects;
     public List<GameObject> teamVehicles;
 
+    //Raycast
+    RaycastHit hitRight; RaycastHit hitLeft; RaycastHit hitStraight;
+    RaycastHit hitBackRight; RaycastHit hitBackLeft; RaycastHit hitBack;
+    float maxRangeClose = 7f;
+    bool obsRightClose, obsLeftClose, obsStraightClose, obsBackRightClose, obsBackLeftClose, obsBackClose;
+
     private void Start()
     {
         m_Car = GetComponent<CarController>();
@@ -157,16 +163,12 @@ public class AIP1TrafficCar : MonoBehaviour
             // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
             Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f);
         }   
-       
 
-        //////////////////////////Catmull-Rom:
+        //Catmull-Rom:
         path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
         //path_of_points = improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
-
-        /* if (myCarIndex == crazyCarIndex)            //Debugging:
-        { Debug.Log("Crazy car: "+crazyCarIndex+", currentPathIndex: "+currentPathIndex+", path_of_points contains: " + path_of_points.Count + " waypoints"); } */
         
         StartCoroutine(wait()); //Wait to begin driving
     }
@@ -176,7 +178,6 @@ public class AIP1TrafficCar : MonoBehaviour
         yield return new WaitForSeconds(myCarIndex * waiting_multiplier);
         //Fixedupdate runs while start is waiting so we need to define a flag that forbids update from driving while Start is waiting
         this.start_moving = true;
-
     }
 
     private void FixedUpdate()
@@ -207,35 +208,8 @@ public class AIP1TrafficCar : MonoBehaviour
 
     private void DriveAndRecover(Vector3 orca_velocity) 
     { //Follow waypoints and do collision recovery
-        // Rotate the car's forward vector by �30� to get left/right directions for the raycast
-        Vector3 directionRight = Quaternion.Euler(0, -30, 0) * transform.forward;
-        Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * transform.forward;
-        Vector3 directionBackLeft = Quaternion.Euler(0, 150, 0) * transform.forward;
-        Vector3 directionBackRight = Quaternion.Euler(0, -150, 0) * transform.forward;
-        Vector3 directionBack = Quaternion.Euler(0, 180, 0) * transform.forward;
-
-        RaycastHit hitRight; RaycastHit hitLeft; RaycastHit hitStraight; 
-        RaycastHit hitBackRight; RaycastHit hitBackLeft; RaycastHit hitBack;
-        float maxRangeClose = 7f;
-
-        // Cast the ray in world space (6 ray cast in front,back and diagonals)
-        bool obsRightClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
-        bool obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
-        bool obsStraightClose = Physics.Raycast(transform.position, transform.TransformDirection(new Vector3(0, 0, 1)),
-            out hitStraight, maxRangeClose);
-        bool obsBackRightClose =
-            Physics.Raycast(transform.position, directionBackRight, out hitBackRight, maxRangeClose);
-        bool obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
-        bool obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
-
-        // Draw Raycasts in Blue
-        /* Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
-        Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
-        Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
-        Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
-        Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
-        Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue); */
-
+        //Detect obstacles
+        UpdateRaycast();
 
         if (!isStuck)
         {            
@@ -244,7 +218,6 @@ public class AIP1TrafficCar : MonoBehaviour
                 target_position = transform.position + orca_velocity;
                 target_velocity = orca_velocity;
             }
-
             else 
             {
                 target_position = path_of_points[currentPathIndex];
@@ -267,7 +240,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
                 // Scale k_p and k_d based on distance between 1 and 10
                 float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
-                float k_p_dynamic = Mathf.Lerp(2f, 6f, scaleFactor / 4f);
+                float k_p_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
                 float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
 
                 float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
@@ -286,38 +259,24 @@ public class AIP1TrafficCar : MonoBehaviour
                 // Turn if you're too close to an obstacle
                 if (acceleration > 0)
                 {
-                    if (obsLeftClose)
-                    {
-                        steering -= 5;
-                    }
-                    else if (obsRightClose)
-                    {
-                        steering += 5;
-                    }
+                    if (obsLeftClose) steering -= 5;
+                    else if (obsRightClose) steering += 5;
                 }
-
                 else
                 {
-                    if (obsBackLeftClose)
-                    {
-                        steering += 5;
-                    }
-                    else if (obsBackRightClose)
-                    {
-                        steering -= 5;
-                    }
+                    if (obsBackLeftClose) steering += 5;
+                    else if (obsBackRightClose) steering -= 5;
+                    
                 }
 
                 Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
 
-
                 if (m_Intersection.HasToStop(m_Car, m_OtherCars))
                 {
-                    m_Car.Move(0f, 0f, 0f, 10f);
+                    m_Car.Move(0f, 0f, 0f, 100f);
                 }
                 else
                 {
-                    // this is how you control the car
                     m_Car.Move(steering, acceleration, acceleration, 0f);
                 }
 
@@ -397,6 +356,31 @@ public class AIP1TrafficCar : MonoBehaviour
             }
         }
         return Mathf.Max(nearestIndex, currentPathIndex);
+    }
+
+    private void UpdateRaycast()
+    {
+        // Rotate the car's forward vector by �30� to get left/right directions for the raycast
+        Vector3 directionRight = Quaternion.Euler(0, -30, 0) * transform.forward;
+        Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * transform.forward;
+        Vector3 directionBackLeft = Quaternion.Euler(0, 150, 0) * transform.forward;
+        Vector3 directionBackRight = Quaternion.Euler(0, -150, 0) * transform.forward;
+        Vector3 directionBack = Quaternion.Euler(0, 180, 0) * transform.forward;
+
+        obsRightClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
+        obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
+        obsStraightClose = Physics.Raycast(transform.position, transform.TransformDirection(new Vector3(0, 0, 1)), out hitStraight, maxRangeClose);
+        obsBackRightClose = Physics.Raycast(transform.position, directionBackRight, out hitBackRight, maxRangeClose);
+        obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
+        obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
+
+        // Draw Raycasts in Blue
+        /* Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
+        Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue); */
     }
 
 }
