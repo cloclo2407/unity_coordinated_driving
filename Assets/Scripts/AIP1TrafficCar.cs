@@ -67,7 +67,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
-    float distToPoint = 3f;
+    float distToPoint = 4f;
 
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
@@ -169,6 +169,9 @@ public class AIP1TrafficCar : MonoBehaviour
         path_of_points = m_improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
+
+        target_position = path_of_points[0];
+        old_target_pos = transform.position;
         
         StartCoroutine(wait()); //Wait to begin driving
     }
@@ -212,6 +215,9 @@ public class AIP1TrafficCar : MonoBehaviour
     { //Follow waypoints and do collision recovery
         //Detect obstacles
         UpdateRaycast();
+        target_position = path_of_points[currentPathIndex];
+        target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
+        old_target_pos = target_position;
 
         if (!isStuck)
         {
@@ -224,9 +230,6 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             else // no collision to avoid with orca 
             {
-                target_position = path_of_points[currentPathIndex];
-                target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-                old_target_pos = target_position;
 
                 if (carToFollow != null)
                 {
@@ -262,6 +265,7 @@ public class AIP1TrafficCar : MonoBehaviour
             if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
             {
                 currentPathIndex++;
+
                 if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
 
                 if (currentPathIndex == path_of_points.Count) goal_reached = true;  
@@ -329,8 +333,8 @@ public class AIP1TrafficCar : MonoBehaviour
 
         // Scale k_p and k_d based on distance between 1 and 10
         float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
-        float k_p_dynamic = Mathf.Lerp(2f, 6f, scaleFactor / 6f);
-        float k_d_dynamic = Mathf.Lerp(2f, 6f, scaleFactor / 6f);
+        float k_p_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
+        float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
 
         float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
         Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
