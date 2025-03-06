@@ -235,9 +235,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car                         
                 }
 
-                float steering;
-                float acceleration;
-                PdTracker(out steering, out acceleration);
+                PdTracker();
 
                 // Turn if you're too close to an obstacle
                 if (acceleration > 0)
@@ -325,7 +323,7 @@ public class AIP1TrafficCar : MonoBehaviour
         return Mathf.Max(nearestIndex, currentPathIndex);
     }
 
-    private void PdTracker(out float steering, out float acceleration)
+    private void PdTracker()
     {
         float distance = Vector3.Distance(target_position, transform.position);
 
