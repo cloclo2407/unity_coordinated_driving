@@ -38,7 +38,6 @@ public class AIP1TrafficCar : MonoBehaviour
 
     private ImprovePath m_improvePath;
     private Orca m_Orca;
-    private CollisionAvoidance m_CollisionAvoidance;
     private Formation m_Formation;
     private Intersection m_Intersection;
     
@@ -68,6 +67,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
+    float distToPoint = 3f;
 
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
@@ -97,7 +97,6 @@ public class AIP1TrafficCar : MonoBehaviour
         my_rigidbody = GetComponent<Rigidbody>();
 
         m_improvePath = new ImprovePath();
-        m_CollisionAvoidance = new CollisionAvoidance();
         m_Formation = new Formation();
         m_Intersection = new Intersection();
         
@@ -167,7 +166,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         //Catmull-Rom:
         path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
-        //path_of_points = improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
+        path_of_points = m_improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
         
@@ -203,8 +202,10 @@ public class AIP1TrafficCar : MonoBehaviour
     private void OnDrawGizmos() // This method is called by the Unity Editor everytime FixedUpdate() runs.
     {
         // It must not be called by us during runtime, that will raise an error
-        Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
-        Handles.DrawWireDisc(transform.position, Vector3.up, m_Orca.neighbor_radius);
+        //Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+        //Handles.DrawWireDisc(transform.position, Vector3.up, m_Orca.neighbor_radius);
+
+        Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
     }
 
     private void DriveAndRecover(Vector3 orca_velocity) 
@@ -213,8 +214,10 @@ public class AIP1TrafficCar : MonoBehaviour
         UpdateRaycast();
 
         if (!isStuck)
-        {            
-            if (orca_velocity != Vector3.zero)
+        {
+            m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+
+            if (orca_velocity != Vector3.zero && carToFollow == null)
             {
                 target_position = transform.position + orca_velocity;
                 target_velocity = orca_velocity;
@@ -224,8 +227,6 @@ public class AIP1TrafficCar : MonoBehaviour
                 target_position = path_of_points[currentPathIndex];
                 target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
                 old_target_pos = target_position;
-
-                m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
 
                 if (carToFollow != null)
                 {
@@ -247,59 +248,44 @@ public class AIP1TrafficCar : MonoBehaviour
                 else
                 {
                     if (obsBackLeftClose) steering += 5;
-                    else if (obsBackRightClose) steering -= 5;             
+                    else if (obsBackRightClose) steering -= 5;
                 }
 
-                Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
-
-                if (m_Intersection.HasToStop(m_Car, m_OtherCars))
+                /*if (m_Intersection.HasToStop(m_Car, m_OtherCars))
                 {
                     m_Car.Move(0f, 0f, 0f, 100f);
                 }
                 else
-                {
+                {*/
                     m_Car.Move(steering, acceleration, acceleration, 0f);
-                }
-
-                float distToPoint = 6f;
-
-                if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
-                {
-                    currentPathIndex++;
-                    if (currentPathIndex == path_of_points.Count - 1)
-                    { distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
-
-                    if (currentPathIndex == path_of_points.Count) { goal_reached = true; }
-                }
-
-                // If you're barely moving it means you're stuck
-                if (my_rigidbody.linearVelocity.magnitude < 0.5f)
-                {
-                    timeStuck += 1;
-                    if (timeStuck > 70) // If you're not moving for too long you're stuck
-                    {
-                        isStuck = true;
-                    }
-                }
+                //}
             }
-            
-            Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity
-            Debug.DrawLine(transform.position, path_of_points[currentPathIndex], Color.black); //Draws black line to waypoint on path
-            
-            //Debug.DrawLine(target_position, target_position + target_velocity, Color.red);
-            //Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.blue);
-            //Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
+
+            if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
+            {
+                currentPathIndex++;
+                if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
+
+                if (currentPathIndex == path_of_points.Count) goal_reached = true;  
+            }
 
             // If you're barely moving it means you're stuck
-            if (my_rigidbody.linearVelocity.magnitude < 0.1f && currentPathIndex > 1)
+            if (my_rigidbody.linearVelocity.magnitude < 0.5f)
             {
                 timeStuck += 1;
-                if (timeStuck > 70) isStuck = true; // If you're not moving for too long you're stuck
+                if (timeStuck > 70) // If you're not moving for too long you're stuck
+                {
+                    isStuck = true;
+                }
             }
+            else timeStuck = 0;    
+            
+            Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity            
         }
+
         else //if stuck:
         {
-            if (!m_Intersection.HasToStop(m_Car, m_OtherCars)) // Check if you're stuck or if your're waiting for another car to go
+            //if (!m_Intersection.HasToStop(m_Car, m_OtherCars)) // Check if you're stuck or if your're waiting for another car to go
             {
                 // If you have an obstacle behind you go forward
                 if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 100f, 100f, 0f);
@@ -308,10 +294,10 @@ public class AIP1TrafficCar : MonoBehaviour
                 timeStuck -= 1;
                 if (timeStuck == 0) isStuck = false;
             }
-            else
+            /*else
             {
                 m_Car.Move(0f, 0f, 0f, 100f);
-            }
+            }*/
         }
     }
 
@@ -360,7 +346,6 @@ public class AIP1TrafficCar : MonoBehaviour
         acceleration = Vector3.Dot(desired_acceleration, transform.forward);
 
         Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
-
     }
 
     private void UpdateRaycast()
