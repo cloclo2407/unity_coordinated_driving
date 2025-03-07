@@ -19,6 +19,11 @@ public class Formation
 
         if (myCarScript.carToFollow != null)
         {
+            if (myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop)
+            {
+                return;
+            }
+
             Vector3 otherPosition = myCarScript.carToFollow.transform.position;
             Vector3 otherVelocity = myCarScript.carToFollow.GetComponent<Rigidbody>().linearVelocity;
            

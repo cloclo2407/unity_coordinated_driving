@@ -210,6 +210,13 @@ public class AIP1TrafficCar : MonoBehaviour
         //Handles.DrawWireDisc(transform.position, Vector3.up, m_Orca.neighbor_radius);
 
         Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
+
+        if (hasToStop)
+        {
+            Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+            Handles.DrawWireDisc(transform.position, Vector3.up, 4f);
+        }
+
     }
 
     private void DriveAndRecover(Vector3 orca_velocity) 
@@ -260,10 +267,6 @@ public class AIP1TrafficCar : MonoBehaviour
                     if (obsBackLeftClose) steering += 5;
                     else if (obsBackRightClose) steering -= 5;
                 }              
-                if (my_rigidbody.linearVelocity.magnitude > 10f)
-                {
-                    Debug.Log("velocity: " +  my_rigidbody.linearVelocity.magnitude);
-                }
                  m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
