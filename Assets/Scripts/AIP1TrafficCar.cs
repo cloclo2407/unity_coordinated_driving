@@ -68,7 +68,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
     public float distToPoint = 4f;
-    bool hasToStop;
+    public bool hasToStop;
 
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
@@ -220,15 +220,14 @@ public class AIP1TrafficCar : MonoBehaviour
         target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
         old_target_pos = target_position;
 
+        m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
         m_Intersection.HasToStop(m_Car, m_OtherCars);
 
         if (!isStuck)
         {
-            m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
-
             if (hasToStop)
             {
-                m_Car.Move(0f, 0f, 0f, 100f);
+                m_Car.Move(0f, 0f, 100f, 1000f);
             }
 
             else
@@ -236,8 +235,9 @@ public class AIP1TrafficCar : MonoBehaviour
                 if (carToFollow != null)
                 {
                     target_position = carToFollow.transform.position;
-                    target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.5f;
+                    //target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.2f;
                     target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car   
+
                     distToPoint = 6f; // Can validate point from further if you're following a car
                 }
 
@@ -259,7 +259,11 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
                     if (obsBackLeftClose) steering += 5;
                     else if (obsBackRightClose) steering -= 5;
-                }                
+                }              
+                if (my_rigidbody.linearVelocity.magnitude > 10f)
+                {
+                    Debug.Log("velocity: " +  my_rigidbody.linearVelocity.magnitude);
+                }
                  m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
@@ -300,7 +304,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             else
             {
-                m_Car.Move(0f, 0f, 0f, 100f);
+                m_Car.Move(0f, 0f, 100f, 100f);
             }
         }
     }

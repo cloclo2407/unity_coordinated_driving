@@ -26,6 +26,12 @@ public class Intersection
             AIP1TrafficCar myCarScript = myCar.GetComponent<AIP1TrafficCar>(); // Get the script
             Vector3 myTarget = myCarScript.target_position;
 
+            if (myCarScript.carToFollow != null)
+            {
+                if (myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop) return true; // Stop if the car I follow has to stop
+                else return false; //only leading car decides
+            }
+
             float angle = Vector3.Angle(myTarget - myPosition, otherTarget - otherPosition);
 
             // Check for intersection
@@ -33,9 +39,11 @@ public class Intersection
             {
                 // Check if the intersection is within maxDistanceToStop units from myPosition
                 // and if you're not going into the same direction
-                if (Vector3.Distance(myPosition, intersection) <= maxDistanceToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && angle > minAngleToStop)
+                if (Vector3.Distance(myPosition, intersection) <= maxDistanceToStop && angle > minAngleToStop)
                 {
-                    return true;
+                    if (otherCarScript.carToFollow == null && myCarScript.myCarIndex > otherCarScript.myCarIndex)
+                        return true;
+                    else if (otherCarScript.carToFollow != null) return true; // if the other car is following and I'm not, I stop
                 }
             }
         }
