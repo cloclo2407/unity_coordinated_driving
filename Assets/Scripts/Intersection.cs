@@ -7,11 +7,17 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class Intersection
 {
-    float maxDistanceToStop = 6f;
+    float minDistanceToStop = 5f; // Minimum stopping distance (slow speeds)
+    float maxDistanceToStop = 15f; // Maximum stopping distance (high speeds)
+    float maxSpeed = 23f; // Define max expected speed for scaling
     float minAngleToStop = 40f;
 
     public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
     {
+        float mySpeed = myCar.GetComponent<Rigidbody>().linearVelocity.magnitude;
+        float speedFactor = Mathf.Clamp01(mySpeed / maxSpeed); // Normalize speed to [0,1]
+        float dynamicStopDistance = Mathf.Lerp(minDistanceToStop, maxDistanceToStop, speedFactor);
+
         foreach (var otherCar in m_OtherCars)
         {
             if (otherCar == myCar) continue; // skip self
@@ -39,7 +45,7 @@ public class Intersection
             {
                 // Check if the intersection is within maxDistanceToStop units from myPosition
                 // and if you're not going into the same direction
-                if (Vector3.Distance(myPosition, intersection) <= maxDistanceToStop && angle > minAngleToStop)
+                if (Vector3.Distance(myPosition, intersection) <= dynamicStopDistance && angle > minAngleToStop)
                 {
                     if (otherCarScript.carToFollow == null && myCarScript.myCarIndex > otherCarScript.myCarIndex)
                         return true;
