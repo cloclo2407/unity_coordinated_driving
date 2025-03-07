@@ -67,7 +67,8 @@ public class AIP1TrafficCar : MonoBehaviour
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
-    float distToPoint = 4f;
+    public float distToPoint = 4f;
+    bool hasToStop;
 
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
@@ -219,25 +220,33 @@ public class AIP1TrafficCar : MonoBehaviour
         target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
         old_target_pos = target_position;
 
+        m_Intersection.HasToStop(m_Car, m_OtherCars);
+
         if (!isStuck)
         {
             m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
 
-            if (orca_velocity != Vector3.zero && carToFollow == null)
+            if (hasToStop)
             {
-                target_position = transform.position + orca_velocity;
-                target_velocity = orca_velocity;
+                m_Car.Move(0f, 0f, 0f, 100f);
             }
-            else // no collision to avoid with orca 
-            {
 
+            else
+            {
                 if (carToFollow != null)
                 {
                     target_position = carToFollow.transform.position;
-                    target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity;
-                    target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car                         
+                    target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.5f;
+                    target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car   
+                    distToPoint = 6f; // Can validate point from further if you're following a car
                 }
 
+                /*else if (orca_velocity != Vector3.zero)
+                {
+                    target_position = transform.position + orca_velocity;
+                    target_velocity = orca_velocity;
+                }*/
+   
                 PdTracker();
 
                 // Turn if you're too close to an obstacle
@@ -250,16 +259,8 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
                     if (obsBackLeftClose) steering += 5;
                     else if (obsBackRightClose) steering -= 5;
-                }
-
-                /*if (m_Intersection.HasToStop(m_Car, m_OtherCars))
-                {
-                    m_Car.Move(0f, 0f, 0f, 100f);
-                }
-                else
-                {*/
-                    m_Car.Move(steering, acceleration, acceleration, 0f);
-                //}
+                }                
+                 m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
             if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
@@ -267,6 +268,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 currentPathIndex++;
 
                 if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
+                else {distToPoint = 4f; } //reset
 
                 if (currentPathIndex == path_of_points.Count) goal_reached = true;  
             }
@@ -280,14 +282,14 @@ public class AIP1TrafficCar : MonoBehaviour
                     isStuck = true;
                 }
             }
-            else timeStuck = 0;    
+            else timeStuck = 0;
             
             Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity            
         }
 
         else //if stuck:
         {
-            //if (!m_Intersection.HasToStop(m_Car, m_OtherCars)) // Check if you're stuck or if your're waiting for another car to go
+            if (!hasToStop) // Check if you're stuck or if your're waiting for another car to go
             {
                 // If you have an obstacle behind you go forward
                 if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 100f, 100f, 0f);
@@ -296,10 +298,10 @@ public class AIP1TrafficCar : MonoBehaviour
                 timeStuck -= 1;
                 if (timeStuck == 0) isStuck = false;
             }
-            /*else
+            else
             {
                 m_Car.Move(0f, 0f, 0f, 100f);
-            }*/
+            }
         }
     }
 

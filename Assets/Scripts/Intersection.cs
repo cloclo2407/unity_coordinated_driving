@@ -7,7 +7,7 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class Intersection
 {
-    float maxDistanceToStop = 10f;
+    float maxDistanceToStop = 6f;
     float minAngleToStop = 40f;
 
     public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
