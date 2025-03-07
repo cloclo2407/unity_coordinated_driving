@@ -338,9 +338,9 @@ public class AIP1TrafficCar : MonoBehaviour
         float distance = Vector3.Distance(target_position, transform.position);
 
         // Scale k_p and k_d based on distance between 1 and 10
-        float scaleFactor = Mathf.Clamp(distance / 4f, 2f, 4f);  // Adjust 5f(first one) to control sensitivity
-        float k_p_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
-        float k_d_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 4f);
+        float scaleFactor = Mathf.Clamp(distance / 2f, 0f, 1f);  // Adjust 5f(first one) to control sensitivity, bigger means accelarate more abruptly
+        float k_p_dynamic = Mathf.Lerp(2f, 4f, scaleFactor / 1f);
+        float k_d_dynamic = Mathf.Lerp(3f, 4f, scaleFactor / 1f);
 
         float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
         Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
