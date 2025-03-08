@@ -97,10 +97,10 @@ public class Orca
                 Vector3 line_starting_point = m_Car.transform.position + constraint.Item1;
 
                 //Draw normal to constraint-line
-                Debug.DrawLine(line_starting_point, line_starting_point + constraint.Item2 * 5f, Color.yellow);
+                //Debug.DrawLine(line_starting_point, line_starting_point + constraint.Item2 * 5f, Color.yellow);
                 //Draw each halves of the line (left and right)
-                Debug.DrawLine(line_starting_point, line_starting_point + (0.5f * neighbor_radius * parallel_vector), Color.cyan);
-                Debug.DrawLine(line_starting_point, line_starting_point + (-0.5f * neighbor_radius * parallel_vector), Color.cyan);
+                //Debug.DrawLine(line_starting_point, line_starting_point + (0.5f * neighbor_radius * parallel_vector), Color.cyan);
+                //Debug.DrawLine(line_starting_point, line_starting_point + (-0.5f * neighbor_radius * parallel_vector), Color.cyan);
             }
 
             //Solve quadratic programming problem according to orca_constraints and return new safe velocity

@@ -243,9 +243,10 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
                     target_position = carToFollow.transform.position;
                     //target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.2f;
-                    target_position = target_position - target_velocity.normalized * 7f; // Aim for behind the car   
+                    target_position = target_position - target_velocity.normalized * 7f; // Aim for behind the car
+                    target_position = target_position - carToFollow.transform.forward * 5f;
 
-                    distToPoint = 6f; // Can validate point from further if you're following a car
+                    if (currentPathIndex != path_of_points.Count - 1) distToPoint = 6f; // Can validate point from further if you're following a car
                 }
 
                 /*else if (orca_velocity != Vector3.zero)
@@ -267,7 +268,9 @@ public class AIP1TrafficCar : MonoBehaviour
                     if (obsBackLeftClose) steering += 5;
                     else if (obsBackRightClose) steering -= 5;
                 }              
-                 m_Car.Move(steering, acceleration, acceleration, 0f);              
+
+                if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
+                else m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
             if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
