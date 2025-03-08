@@ -99,7 +99,7 @@ public class Formation
         float distToTarget = my_direction.magnitude;
         float distToCar = deltaPosition.magnitude;
 
-        if (behind > 0 && sameDirection < minSameDirection  && distanceParallel < maxDistance && distancePerpendicular < maxDistancePerpendicular && distToCar < distToTarget && deltaVelocity < maxDeltaVelocity)
+        if (behind > 0 && sameDirection < minSameDirection  && distanceParallel < maxDistance && distancePerpendicular < maxDistancePerpendicular  && deltaVelocity < maxDeltaVelocity)
         {
             return true;
         }

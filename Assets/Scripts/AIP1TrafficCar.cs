@@ -213,7 +213,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         if (hasToStop)
         {
-            Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+            Handles.color = Color.blue; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
             Handles.DrawWireDisc(transform.position, Vector3.up, 4f);
         }
 
@@ -260,13 +260,13 @@ public class AIP1TrafficCar : MonoBehaviour
                 // Turn if you're too close to an obstacle
                 if (acceleration > 0)
                 {
-                    if (obsLeftClose) steering -= 5;
-                    else if (obsRightClose) steering += 5;
+                    if (obsLeftClose) steering -= 1f;
+                    else if (obsRightClose) steering += 1f;
                 }
                 else
                 {
-                    if (obsBackLeftClose) steering += 5;
-                    else if (obsBackRightClose) steering -= 5;
+                    if (obsBackLeftClose) steering += 1f;
+                    else if (obsBackRightClose) steering -= 1f;
                 }              
 
                 if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
