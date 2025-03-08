@@ -10,7 +10,7 @@ public class Intersection
     float minDistanceToStop = 5f; // Minimum stopping distance (slow speeds)
     float maxDistanceToStop = 15f; // Maximum stopping distance (high speeds)
     float maxSpeed = 23f; // Define max expected speed for scaling
-    float minAngleToStop = 40f;
+    float minAngleToStop = 30f;
 
     public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
     {

@@ -243,7 +243,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
                     target_position = carToFollow.transform.position;
                     //target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.2f;
-                    target_position = target_position - target_velocity.normalized * 5f; // Aim for behind the car   
+                    target_position = target_position - target_velocity.normalized * 7f; // Aim for behind the car   
 
                     distToPoint = 6f; // Can validate point from further if you're following a car
                 }
