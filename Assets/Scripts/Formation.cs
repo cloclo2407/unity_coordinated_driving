@@ -9,7 +9,8 @@ public class Formation
 {
     float minSameDirection = 35f; // how much too cars should have the same direction to start following each other (angle)
     float maxDeltaVelocity = 5f; // Maximum difference between the speed of two cars to start following each other
-    float maxDistance = 15f;
+    float maxDistance = 15f; // Maximum distance in a line
+    float maxDistancePerpendicular = 6f; // Maximum distance in the direction perpendicular to the cars
 
     // return a car to follow if one close going in the same direction (returns closest one)
     // else return null
@@ -92,10 +93,13 @@ public class Formation
         Vector3 my_direction = target_position - myPosition;
         float sameDirection = Vector3.Angle(my_direction.normalized, otherVelocity.normalized);
 
+        float distanceParallel = Vector3.Dot(deltaPosition, otherVelocity.normalized);
+        float distancePerpendicular = (deltaPosition - (distanceParallel * otherVelocity.normalized)).magnitude;
+
         float distToTarget = my_direction.magnitude;
         float distToCar = deltaPosition.magnitude;
 
-        if (behind > 0 && sameDirection < minSameDirection  && deltaPosition.magnitude < maxDistance && distToCar < distToTarget && deltaVelocity < maxDeltaVelocity)
+        if (behind > 0 && sameDirection < minSameDirection  && distanceParallel < maxDistance && distancePerpendicular < maxDistancePerpendicular && distToCar < distToTarget && deltaVelocity < maxDeltaVelocity)
         {
             return true;
         }
