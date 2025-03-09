@@ -167,7 +167,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         //Catmull-Rom:
         path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
-        path_of_points = m_improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
+        //path_of_points = m_improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
@@ -228,7 +228,7 @@ public class AIP1TrafficCar : MonoBehaviour
         old_target_pos = target_position;
 
         m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
-        m_Intersection.HasToStop(m_Car, m_OtherCars);
+        hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars);
 
         if (!isStuck)
         {
@@ -344,9 +344,9 @@ public class AIP1TrafficCar : MonoBehaviour
         float distance = Vector3.Distance(target_position, transform.position);
 
         // Scale k_p and k_d based on distance between 1 and 10
-        float scaleFactor = Mathf.Clamp(distance / 3f, 0f, 1f);  // Adjust 5f(first one) to control sensitivity, bigger means accelarate more abruptly
+        float scaleFactor = Mathf.Clamp(distance / 2f, 1f, 1f);  // Adjust 5f(first one) to control sensitivity, bigger means accelarate more abruptly
         float k_p_dynamic = Mathf.Lerp(3f, 4f, scaleFactor / 1f);
-        float k_d_dynamic = Mathf.Lerp(3f, 4f, scaleFactor / 1f);
+        float k_d_dynamic = Mathf.Lerp(4f, 4f, scaleFactor / 1f);
 
         float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
         Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;

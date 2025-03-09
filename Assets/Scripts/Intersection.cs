@@ -7,7 +7,7 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 
 public class Intersection
 {
-    float minDistanceToStop = 5f; // Minimum stopping distance (slow speeds)
+    float minDistanceToStop = 10f; // Minimum stopping distance (slow speeds)
     float maxDistanceToStop = 15f; // Maximum stopping distance (high speeds)
     float maxSpeed = 23f; // Define max expected speed for scaling
     float minAngleToStop = 35f;
