@@ -87,6 +87,7 @@ public class Formation
     // Suppressed velocity for now
     private bool CanBeFollowed (Vector3 myPosition, Vector3 myVelocity, Vector3 otherPosition, Vector3 otherVelocity, Vector3 target_position)
     {
+        if (otherVelocity.magnitude <= 0) return false;
         Vector3 deltaPosition = otherPosition - myPosition;
         float deltaVelocity = (otherVelocity - myVelocity).magnitude;
         float behind = Vector3.Dot(deltaPosition.normalized, otherVelocity.normalized);

@@ -10,7 +10,7 @@ public class Intersection
     float minDistanceToStop = 10f; // Minimum stopping distance (slow speeds)
     float maxDistanceToStop = 15f; // Maximum stopping distance (high speeds)
     float maxSpeed = 23f; // Define max expected speed for scaling
-    float minAngleToStop = 35f;
+    float minAngleToStop = 46f;
 
     public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
     {
@@ -45,9 +45,9 @@ public class Intersection
 
             if (otherPath == null || myPath == null) continue; // Ensure paths are valid
 
-            for (int i = myIndex; i < Mathf.Min(myIndex + 6, myPath.Count - 1); i++)
+            for (int i = myIndex; i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++)
             {
-                for (int j = otherIndex; j < Mathf.Min(otherIndex + 6, otherPath.Count - 1); j++)
+                for (int j = otherIndex; j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++)
                 {
                     myStart = myPath[i];
                     otherStart = otherPath[j];
@@ -55,12 +55,14 @@ public class Intersection
                     Vector3 otherEnd = otherPath[j+1];
 
                     float angle = Vector3.Angle(myEnd - myStart, otherEnd - otherStart);
+                    angle = Vector3.Angle(myCar.transform.forward, otherCar.transform.forward);
 
                     if (SegmentsIntersect(myStart, myEnd, otherStart, otherEnd, out Vector3 intersection))
                     {
-                        if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop)
-                             return true;
-                            else if (otherCarScript.carToFollow != null && !otherCarScript.hasToStop) return true;
+                        if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop /*&& Vector3.Distance(myPosition, intersection) < Vector3.Distance(otherPosition, intersection)*/)
+                            return true;
+                        else if (otherCarScript.carToFollow != null && !otherCarScript.hasToStop) return true;
+                        else if (!otherCarScript.hasToStop && myCarScript.hasToStop) return true;
                             if (Vector3.Distance(myPosition, intersection) <= Vector3.Distance(otherPosition, intersection) /*&& angle > minAngleToStop*/)
                         {
 

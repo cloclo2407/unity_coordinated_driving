@@ -67,7 +67,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
-    public float distToPoint = 4f;
+    public float distToPoint = 6f;
     public bool hasToStop;
 
     //private bool obstacles_close = false;
@@ -166,7 +166,7 @@ public class AIP1TrafficCar : MonoBehaviour
         }   
 
         //Catmull-Rom:
-        path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
+        //path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
         //path_of_points = m_improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
@@ -227,11 +227,12 @@ public class AIP1TrafficCar : MonoBehaviour
         target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
         old_target_pos = target_position;
 
-        m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
         hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars);
 
         if (!isStuck)
         {
+            m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+
             if (hasToStop)
             {
                 m_Car.Move(0f, 0f, 100f, 1000f);
@@ -310,7 +311,9 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             else
             {
-                m_Car.Move(0f, 0f, 100f, 100f);
+                timeStuck = 0;
+                isStuck = false;
+                m_Car.Move(0f, 0f, 100f, 1000f);
             }
         }
     }
