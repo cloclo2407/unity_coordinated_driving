@@ -96,9 +96,7 @@ public class StateNode : IComparable<StateNode> {
     {   // Calculates and sets close_to_obstacle_penalty for a new StateNode
         
         // Get all colliders within the sphere
-        Collider[] hit_colliders = Physics.OverlapSphere(this.world_position, 6.5f, LayerMask.GetMask("Obstacle"));
-
-        if (hit_colliders.Length == 0) return 0f; //If no obstacles in this sphere, close_to_obstacle_penalty = 0f;
+        Collider[] hit_colliders = Physics.OverlapSphere(this.world_position, 3f, LayerMask.GetMask("Obstacle"));
         
         // Initialize variables to store the closest hit info
         float min_hit_distance = Mathf.Infinity;
@@ -112,8 +110,30 @@ public class StateNode : IComparable<StateNode> {
 
             if (hit_distance < min_hit_distance) min_hit_distance = hit_distance;
         }
-        
-        return (1/min_hit_distance)*200f; //The smaller the distance to closest obstacle, the higher the penalty cost
+
+        Vector3 forward = Quaternion.Euler(0, this.orientation, 0) * Vector3.forward;
+        // Compute the left direction vector
+        Vector3 leftDirection = Quaternion.Euler(0, -90, 0) * forward;
+
+        // Compute the new position
+        Vector3 onMyLeft = this.world_position + leftDirection * 5f;
+
+        // Get all colliders within the sphere
+        hit_colliders = Physics.OverlapSphere(onMyLeft, 3f, LayerMask.GetMask("Obstacle"));
+
+        // Initialize variables to store the closest hit info
+        float min_left_hit_distance = Mathf.Infinity;
+
+        // Iterate through each collider to find the closest hit point
+        foreach (Collider col in hit_colliders)
+        {
+            // Get the closest point on the collider to the origin.
+            Vector3 hit_point = col.ClosestPoint(this.world_position);
+            float hit_distance = Vector3.Distance(hit_point, this.world_position);
+
+            if (hit_distance < min_left_hit_distance) min_left_hit_distance = hit_distance;
+        }
+        return (1/min_hit_distance)*200f + (1/min_left_hit_distance)*1000f; //The smaller the distance to closest obstacle, the higher the penalty cost
     }
 
     public List<StateNode> makeChildNodes(Dictionary<Vector3Int, StateNode> visited_nodes, PriorityQueue Q, Vector3 global_goal_pos, MapManager mapManager, ObstacleMap obstacleMap, float cellength, String vehicle)
