@@ -45,9 +45,9 @@ public class Intersection
 
             if (otherPath == null || myPath == null) continue; // Ensure paths are valid
 
-            for (int i = myIndex; i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++)
+            for (int i = Mathf.Max(myIndex-2, 0); i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++)
             {
-                for (int j = otherIndex; j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++)
+                for (int j = Mathf.Max(otherIndex-2, 0); j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++)
                 {
                     myStart = myPath[i];
                     otherStart = otherPath[j];
@@ -59,10 +59,13 @@ public class Intersection
 
                     if (SegmentsIntersect(myStart, myEnd, otherStart, otherEnd, out Vector3 intersection))
                     {
-                        if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop /*&& Vector3.Distance(myPosition, intersection) < Vector3.Distance(otherPosition, intersection)*/)
-                            return true;
-                        else if (otherCarScript.carToFollow != null && !otherCarScript.hasToStop) return true;
-                        else if (!otherCarScript.hasToStop && myCarScript.hasToStop) return true;
+                        if (i >= myIndex)
+                        {
+                            if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop /*&& Vector3.Distance(myPosition, intersection) < Vector3.Distance(otherPosition, intersection)*/)
+                                return true;
+                            else if (otherCarScript.carToFollow != null && !otherCarScript.hasToStop) return true;
+                            else if (!otherCarScript.hasToStop && myCarScript.hasToStop) return true;
+                        }
                             if (Vector3.Distance(myPosition, intersection) <= Vector3.Distance(otherPosition, intersection) /*&& angle > minAngleToStop*/)
                         {
 
