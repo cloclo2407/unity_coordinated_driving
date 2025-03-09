@@ -16,9 +16,12 @@ public class Orca
     private int max_considered_neighbors = 5;
     private List<GameObject> neighbor_agents = new List<GameObject>();
     public float neighbor_radius = 16f;
+    private int myCarIndex;
+    private bool orca_prio = true; //Priority to drive while other cars slow down to let me get away safely
 
-    public Orca(CarController m_Car, Rigidbody m_rigidbody, GameObject[] m_OtherCars)
+    public Orca(int myCarIndex, CarController m_Car, Rigidbody m_rigidbody, GameObject[] m_OtherCars)
     {
+        this.myCarIndex = myCarIndex;
         this.m_Car = m_Car;
         this.m_rigidbody = m_rigidbody;
         this.m_OtherCars = m_OtherCars;
@@ -57,7 +60,7 @@ public class Orca
                     Vector3 left_bound_vector = Quaternion.Euler(0, theta, 0) * relative_position;
                     Vector3 projected_relative_velocity = Vector3.Project(relative_velocity, left_bound_vector);
                     Vector3 smallest_change_to_avoid_collision = projected_relative_velocity - relative_velocity;
-                    Vector3 point_defining_constraint = v_A + 0.5f * smallest_change_to_avoid_collision;
+                    Vector3 point_defining_constraint = v_A smallest_change_to_avoid_collision; //0.5f * u
                     Vector3 norm_defining_constraint = Vector3.Normalize(smallest_change_to_avoid_collision);
                     Tuple<Vector3, Vector3> new_constraint =
                         new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
@@ -76,7 +79,7 @@ public class Orca
                     Vector3 right_bound_vector = Quaternion.Euler(0, -theta, 0) * relative_position;
                     Vector3 projected_relative_velocity = Vector3.Project(relative_velocity, right_bound_vector);
                     Vector3 smallest_change_to_avoid_collision = projected_relative_velocity - relative_velocity;
-                    Vector3 point_defining_constraint = v_A + 0.5f * smallest_change_to_avoid_collision;
+                    Vector3 point_defining_constraint = v_A + smallest_change_to_avoid_collision; //0.5f * u
                     Vector3 norm_defining_constraint = Vector3.Normalize(smallest_change_to_avoid_collision);
                     Tuple<Vector3, Vector3> new_constraint =
                         new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
@@ -97,16 +100,18 @@ public class Orca
                 Vector3 line_starting_point = m_Car.transform.position + constraint.Item1;
 
                 //Draw normal to constraint-line
-                //Debug.DrawLine(line_starting_point, line_starting_point + constraint.Item2 * 5f, Color.yellow);
+                Debug.DrawLine(line_starting_point, line_starting_point + constraint.Item2 * 5f, Color.yellow);
                 //Draw each halves of the line (left and right)
-                //Debug.DrawLine(line_starting_point, line_starting_point + (0.5f * neighbor_radius * parallel_vector), Color.cyan);
-                //Debug.DrawLine(line_starting_point, line_starting_point + (-0.5f * neighbor_radius * parallel_vector), Color.cyan);
+                Debug.DrawLine(line_starting_point, line_starting_point + (0.5f * neighbor_radius * parallel_vector), Color.cyan);
+                Debug.DrawLine(line_starting_point, line_starting_point + (-0.5f * neighbor_radius * parallel_vector), Color.cyan);
             }
 
             //Solve quadratic programming problem according to orca_constraints and return new safe velocity
             Vector3 new_velocity = solveForNewVelocity();
             //Execute new safe velocity
-            return new_velocity;
+            //return new_velocity;
+            if (orca_prio) return new_velocity; //TODO  Tweak this to get the behavior you want of waiting for my turn!
+            else return Vector3.zero; //TODO
         }
 
         else //No constraints, all agents in the neighborhood give relative velocities that will not lead to collisions
@@ -189,21 +194,26 @@ public class Orca
             else break; //If we only want to add 5 closest cars, let i go from 0 to 4 and then break out of for-loop, based on max_considered_neighbors
         }
 
-        /* //This solution did not work as the ground plane, goal, and start positions also are placed in the Default layer
-        LayerMask agentlayer = LayerMask.GetMask("Default"); //All agents are in the Defaul layer. Any other gameobject with a collider is in the Obstacle layer
-        neighbor_agents.Clear(); //Clear list from old neighbor-agents before we add new ones below:
-        Collider[] collider_hits = Physics.OverlapSphere(transform.position, neighbor_radius, agentlayer); //Returns array of colliders of gameobjects inside sphere
-
-        foreach (Collider hit in collider_hits)
-        {
-            if (hit.gameObject != gameObject) neighbor_agents.Add(hit.gameObject); // Ignore collider of car using Overlapshere to find nearby agents' colliders
+        //Go through sorted_cars and compare each car's index to this car's index. If sorted_cars is not empty and another car in that list
+        // has a higher index than myCarIndex, set orca_prio = false. Otherwise let orca_prio remain true. Also set prio=false if other car in formation
+        foreach ((GameObject, float) car_dist_pair in sorted_cars){
+            var other_car = car_dist_pair.Item1;
+            var other_car_script = other_car.GetComponent<AIP1TrafficCar>();
+            
+            if (other_car_script.IsFollowing == true || other_car_script.IsBeingFollowed == true)
+            { orca_prio = false;} //We don't have priority if other car is in formation
+            
+            else if (other_car_script.myCarIndex > myCarIndex && other_car_script.goal_reached == false) 
+            { orca_prio = false;} //We don't have priority if lower carindex
+            
+            else orca_prio = true;
         }
-        */
     }
 
-    public bool NeedOrca()
+    public bool NeedOrca(bool IsBeingFollowed, bool IsFollowing)
     {
-        if (neighbor_agents.Count != 0) return true;
+        //Do orca only if we have nonzero neighbors and we are not in formation
+        if (neighbor_agents.Count != 0 && IsFollowing == false && IsBeingFollowed == false) return true;
         else return false;
     }
 }
