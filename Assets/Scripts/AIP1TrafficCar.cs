@@ -42,9 +42,9 @@ public class AIP1TrafficCar : MonoBehaviour
     private Intersection m_Intersection;
     
     private List<StateNode> path_of_nodes = new List<StateNode>();
-    private List<Vector3> path_of_points = new List<Vector3>();
+    public List<Vector3> path_of_points = new List<Vector3>();
 
-    private int currentPathIndex = 1;
+    public int currentPathIndex = 1;
     public Vector3 target_position;
     public Vector3 target_velocity;
     public Vector3 old_target_pos;

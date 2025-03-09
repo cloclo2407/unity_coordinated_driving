@@ -18,38 +18,59 @@ public class Intersection
         float speedFactor = Mathf.Clamp01(mySpeed / maxSpeed); // Normalize speed to [0,1]
         float dynamicStopDistance = Mathf.Lerp(minDistanceToStop, maxDistanceToStop, speedFactor);
 
+        Vector3 myPosition = myCar.transform.position;
+        AIP1TrafficCar myCarScript = myCar.GetComponent<AIP1TrafficCar>(); // Get the script
+        List<Vector3> myPath = myCarScript.path_of_points;
+        int myIndex = myCarScript.currentPathIndex;
+
+        if (myCarScript.carToFollow != null)
+        {
+            if (myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop) return true; // Stop if the car I follow has to stop
+            else return false; //only leading car decides
+        }
+
         foreach (var otherCar in m_OtherCars)
         {
             if (otherCar == myCar) continue; // skip self
 
-            if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
+            //if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
 
             Vector3 otherPosition = otherCar.transform.position;
             AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
-            Vector3 otherTarget = otherCarScript.target_position;
+            List<Vector3> otherPath = otherCarScript.path_of_points;
+            int otherIndex = otherCarScript.currentPathIndex;
 
-            Vector3 myPosition = myCar.transform.position;
-            AIP1TrafficCar myCarScript = myCar.GetComponent<AIP1TrafficCar>(); // Get the script
-            Vector3 myTarget = myCarScript.target_position;
+            Vector3 myStart = myPosition;
+            Vector3 otherStart = otherPosition;
 
-            if (myCarScript.carToFollow != null)
+            if (otherPath == null || myPath == null) continue; // Ensure paths are valid
+
+            for (int i = myIndex; i < Mathf.Min(myIndex + 6, myPath.Count - 1); i++)
             {
-                if (myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop) return true; // Stop if the car I follow has to stop
-                else return false; //only leading car decides
-            }
-
-            float angle = Vector3.Angle(myTarget - myPosition, otherTarget - otherPosition);
-
-            // Check for intersection
-            if (SegmentsIntersect(myPosition, myTarget, otherPosition, otherTarget, out Vector3 intersection))
-            {
-                // Check if the intersection is within maxDistanceToStop units from myPosition
-                // and if you're not going into the same direction
-                if (Vector3.Distance(myPosition, intersection) <= dynamicStopDistance && angle > minAngleToStop)
+                for (int j = otherIndex; j < Mathf.Min(otherIndex + 6, otherPath.Count - 1); j++)
                 {
-                    if (otherCarScript.carToFollow == null && myCarScript.myCarIndex > otherCarScript.myCarIndex)
-                        return true;
-                    else if (otherCarScript.carToFollow != null) return true; // if the other car is following and I'm not, I stop
+                    myStart = myPath[i];
+                    otherStart = otherPath[j];
+                    Vector3 myEnd = myPath[i+1];
+                    Vector3 otherEnd = otherPath[j+1];
+
+                    float angle = Vector3.Angle(myEnd - myStart, otherEnd - otherStart);
+
+                    if (SegmentsIntersect(myStart, myEnd, otherStart, otherEnd, out Vector3 intersection))
+                    {
+                        if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop)
+                             return true;
+                            else if (otherCarScript.carToFollow != null && !otherCarScript.hasToStop) return true;
+                            if (Vector3.Distance(myPosition, intersection) <= Vector3.Distance(otherPosition, intersection) /*&& angle > minAngleToStop*/)
+                        {
+
+                            //if (otherCarScript.carToFollow == null && myCarScript.myCarIndex > otherCarScript.myCarIndex)
+                            //    return true;
+                            //else if (otherCarScript.carToFollow != null && !otherCarScript.hasToStop) return true;
+                        }
+                    }
+                    myStart = myEnd;
+                    otherStart = otherEnd;
                 }
             }
         }
