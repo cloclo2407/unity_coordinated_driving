@@ -38,12 +38,14 @@ public class Intersection
         {
             if (otherCar == myCar) continue; // skip self
 
-            //if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
+
+            if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
 
             Vector3 otherPosition = otherCar.transform.position;
             AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
             List<Vector3> otherPath = otherCarScript.path_of_points;
             int otherIndex = otherCarScript.currentPathIndex;
+
 
             Vector3 myStart = myPosition;
             Vector3 otherStart = otherPosition;

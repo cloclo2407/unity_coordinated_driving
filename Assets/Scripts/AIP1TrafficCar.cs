@@ -68,7 +68,8 @@ public class AIP1TrafficCar : MonoBehaviour
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
     public float distToPoint = 4f;
-    public bool hasToStop;
+    public bool hasToStop; // for intersection
+    public bool hasToWait = false;
 
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
@@ -291,6 +292,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 }              
 
                 if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
+                else if (carToFollow != null && Vector3.Distance(transform.position, carToFollow.transform.position) < 5f) m_Car.Move(0f, 0f, 100f, 100f);
                 else m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
