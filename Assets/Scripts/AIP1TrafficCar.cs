@@ -26,7 +26,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private int crazyCarIndex = 1; //For debugging when a specific car is acting crazy
     private float waiting_multiplier = 0f;
     private bool start_moving = false;
-    public bool goal_reached = false;
+    private bool goal_reached = false;
 
     private CarController m_Car; // the car controller we want to use
     private BoxCollider carCollider; //unused BoxCollider
@@ -57,8 +57,7 @@ public class AIP1TrafficCar : MonoBehaviour
     public bool drawTargets;
     public bool drawAllCars;
     public bool drawTeamCars;
-    
-    public bool IsFollowing = false;
+
     public bool IsBeingFollowed = false;
     public CarController followingCar = null;
     public CarController carToFollow = null;
@@ -112,7 +111,7 @@ public class AIP1TrafficCar : MonoBehaviour
         teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
         m_OtherCars = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
 
-        m_Orca = new Orca(myCarIndex, m_Car, my_rigidbody, m_OtherCars);
+        m_Orca = new Orca(m_Car, my_rigidbody, m_OtherCars);
 
         // Note that this array will have "holes" when objects are destroyed. For initial planning they should work.
         // If you don't like the "holes", you can re-fetch this during fixed update.
@@ -198,7 +197,7 @@ public class AIP1TrafficCar : MonoBehaviour
             //Check if we need to evade other cars with Orca:
             m_Orca.UpdateNeighboringAgents();
             Vector3 new_velocity;
-            if (m_Orca.NeedOrca(IsBeingFollowed, IsFollowing)) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
+            if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
             else new_velocity = Vector3.zero;
             DriveAndRecover(new_velocity); //follow path, recover if stuck
         }
@@ -241,7 +240,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
             else
             {
-                if (IsFollowing == true)
+                if (carToFollow != null)
                 {
                     target_position = carToFollow.transform.position;
                     //target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.2f;
@@ -251,11 +250,11 @@ public class AIP1TrafficCar : MonoBehaviour
                     if (currentPathIndex != path_of_points.Count - 1) distToPoint = 6f; // Can validate point from further if you're following a car
                 }
 
-                else if (IsFollowing == false && orca_velocity != Vector3.zero)
+                /*else if (orca_velocity != Vector3.zero)
                 {
                     target_position = transform.position + orca_velocity;
                     target_velocity = orca_velocity;
-                }
+                }*/
    
                 PdTracker();
 
@@ -271,7 +270,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     else if (obsBackRightClose) steering -= 1f;
                 }              
 
-                if (IsFollowing == true && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
+                if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
                 else m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
