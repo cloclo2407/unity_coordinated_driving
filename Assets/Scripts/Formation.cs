@@ -64,7 +64,6 @@ public class Formation
             {
                 otherCarScript.IsBeingFollowed = true; // Set it to true after selecting
                 otherCarScript.followingCar = my_Car;
-                myCarScript.IsFollowing = true;
                 return; // Exit loop after finding a car to follow
             }
             else
@@ -79,7 +78,6 @@ public class Formation
         {
             myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().IsBeingFollowed = false;
             myCarScript.carToFollow = null;
-            myCarScript.IsFollowing = false;
         }
         return;
     }
