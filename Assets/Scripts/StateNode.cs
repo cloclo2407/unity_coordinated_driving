@@ -177,9 +177,15 @@ public class StateNode : IComparable<StateNode> {
                 (Quaternion.Euler(0, this.orientation + turning_angle, 0) * Vector3.forward) *
                 (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
                 this.orientation + turning_angle);
-            potential_movements.Add(north);
-            potential_movements.Add(north_west);
-            potential_movements.Add(north_east);
+
+            if (this.parent_node == null && vehicle == "car") //The first node should be a step forwards
+            { potential_movements.Add(north); }
+            else
+            {
+                potential_movements.Add(north);
+                potential_movements.Add(north_west);
+                potential_movements.Add(north_east);
+            }
 
             if (vehicle == "drone") //The path for the drone has 5 more movement options
             { 
@@ -229,9 +235,15 @@ public class StateNode : IComparable<StateNode> {
             Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
                 (Quaternion.Euler(0, this.orientation + turning_angle, 0) * Vector3.forward) * cellength,
                 this.orientation + turning_angle);
-            potential_movements.Add(north);
-            potential_movements.Add(north_west);
-            potential_movements.Add(north_east); 
+            
+            if (this.parent_node == null && vehicle == "car") //The first node should be a step forwards
+            { potential_movements.Add(north); }
+            else
+            {
+                potential_movements.Add(north);
+                potential_movements.Add(north_west);
+                potential_movements.Add(north_east);
+            }
             
             if (vehicle == "drone") //The path for the drone has 5 more movement options
             { 
