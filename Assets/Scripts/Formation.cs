@@ -60,6 +60,15 @@ public class Formation
             myCarScript.carToFollow = closestCar.GetComponent<CarController>();
             AIP1TrafficCar otherCarScript = closestCar.GetComponent<AIP1TrafficCar>(); // Get the script
 
+            if (otherCarScript.carToFollow != null)
+            {
+                if (otherCarScript.carToFollow == my_Car)
+                {
+                    myCarScript.carToFollow = null ; //don't follow if it's following you
+                    return;
+                }
+            }
+
             if (!otherCarScript.IsBeingFollowed)
             {
                 otherCarScript.IsBeingFollowed = true; // Set it to true after selecting

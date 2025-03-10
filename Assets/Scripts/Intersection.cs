@@ -25,7 +25,11 @@ public class Intersection
 
         if (myCarScript.carToFollow != null)
         {
-            if (myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop) return true; // Stop if the car I follow has to stop
+            if (myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop)
+            {
+                return true; // Stop if the car I follow has to stop
+            }
+            
             else return false; //only leading car decides
         }
 
@@ -61,10 +65,14 @@ public class Intersection
                     {
                         if (i >= myIndex)
                         {
-                            if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop /*&& Vector3.Distance(myPosition, intersection) < Vector3.Distance(otherPosition, intersection)*/)
-                                return true;
-                            else if (otherCarScript.carToFollow != null && !otherCarScript.hasToStop) return true;
-                            else if (!otherCarScript.hasToStop && myCarScript.hasToStop) return true;
+                                if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop)
+                                {
+                                    return true;
+                                }
+                                else if (otherCarScript.carToFollow != null && !otherCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop && angle > minAngleToStop) {
+                                    return true;
+                                }
+                            //else if (!otherCarScript.hasToStop && myCarScript.hasToStop) return true;
                         }
                             if (Vector3.Distance(myPosition, intersection) <= Vector3.Distance(otherPosition, intersection) /*&& angle > minAngleToStop*/)
                         {

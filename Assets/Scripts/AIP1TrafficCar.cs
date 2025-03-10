@@ -223,9 +223,11 @@ public class AIP1TrafficCar : MonoBehaviour
     { //Follow waypoints and do collision recovery
         //Detect obstacles
         UpdateRaycast();
-        target_position = path_of_points[currentPathIndex];
-        target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-        old_target_pos = target_position;
+        if (target_position != path_of_points[currentPathIndex]) {
+            target_position = path_of_points[currentPathIndex];
+            target_velocity = (target_position - old_target_pos) / 5f;
+            old_target_pos = target_position;
+        }
 
         hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars);
 
