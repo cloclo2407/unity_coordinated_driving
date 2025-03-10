@@ -8,7 +8,7 @@ using Imported.StandardAssets.Vehicles.Car.Scripts;
 public class Orca
 {
     Rigidbody m_rigidbody;
-    CarController m_Car;
+    private GameObject m_Agent;
     private GameObject[] m_OtherCars;
 
     private float timeHorizon = 1f; //tau in the report, high tau -> low responsiveness, low tau -> high responsiveness?
@@ -17,20 +17,23 @@ public class Orca
     private List<GameObject> neighbor_agents = new List<GameObject>();
     public float neighbor_radius = 16f;
 
-    public Orca(CarController m_Car, Rigidbody m_rigidbody, GameObject[] m_OtherCars)
+    public Orca(GameObject m_Agent, Rigidbody m_rigidbody, GameObject[] m_OtherCars)
     {
-        this.m_Car = m_Car;
+        this.m_Agent = m_Agent;
         this.m_rigidbody = m_rigidbody;
         this.m_OtherCars = m_OtherCars;
     }
 
-    public Vector3 EvadeCollisionWithORCA()
+    public Vector3 EvadeCollisionWithORCA(String vehicle)
     {
         orca_constraints.Clear(); //Reset ORCA constraints
         Vector3 v_A = m_rigidbody.linearVelocity; //Let this be agent A and other be agent B
-        Vector3 pos_A = m_Car.transform.position;
-        float car_radius = 2.2f; //We approximate the car as a circular robot with radius 2.2 based on the prefab model
-
+        Vector3 pos_A = m_Agent.transform.position;
+        float car_radius = 0f;
+        if (vehicle == "car") car_radius = 2.2f; //We approximate the car as a circular robot with radius 2.2 based on the prefab model
+        else if (vehicle == "drone") car_radius = 0.5f; //The drone is approximated as a capsule with radius 0.5 in the prefab model 
+        else Debug.Log("vehicle string parameter must be either car or drone!");
+        
         foreach (GameObject other_agent in neighbor_agents)
         {
             //Check if we are on collision course with other agent. Compute and store constraint if that is the case.
@@ -94,7 +97,7 @@ public class Orca
                 Vector2 perpendicular2D = new Vector2(constraint.Item2.x, constraint.Item2.z);
                 Vector2 parallel2D = Vector2.Perpendicular(perpendicular2D);
                 Vector3 parallel_vector = new Vector3(parallel2D.x, 0, parallel2D.y);
-                Vector3 line_starting_point = m_Car.transform.position + constraint.Item1;
+                Vector3 line_starting_point = m_Agent.transform.position + constraint.Item1;
 
                 //Draw normal to constraint-line
                 //Debug.DrawLine(line_starting_point, line_starting_point + constraint.Item2 * 5f, Color.yellow);
@@ -176,8 +179,8 @@ public class Orca
         //NOTE: for some reason, this car is added to m_OtherCars, so we have to exclude it below
         foreach (GameObject car in m_OtherCars)
         {
-            if (car != m_Car && (m_Car.transform.position - car.transform.position).magnitude < neighbor_radius) //Exclude this car from neighbor cars
-            { sorted_cars.Add((car, (m_Car.transform.position - car.transform.position).magnitude)); }
+            if (car != m_Agent && (m_Agent.transform.position - car.transform.position).magnitude < neighbor_radius) //Exclude this car from neighbor cars
+            { sorted_cars.Add((car, (m_Agent.transform.position - car.transform.position).magnitude)); }
         }
 
         //sort list of cars in ascending distance to this car, with lambda expression

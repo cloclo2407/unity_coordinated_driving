@@ -12,14 +12,14 @@ public class Intersection
     float maxSpeed = 23f; // Define max expected speed for scaling
     float minAngleToStop = 46f;
 
-    public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
+    public bool HasToStop(GameObject myAgent, GameObject[] m_OtherCars)
     {
-        float mySpeed = myCar.GetComponent<Rigidbody>().linearVelocity.magnitude;
+        float mySpeed = myAgent.GetComponent<Rigidbody>().linearVelocity.magnitude;
         float speedFactor = Mathf.Clamp01(mySpeed / maxSpeed); // Normalize speed to [0,1]
         float dynamicStopDistance = Mathf.Lerp(minDistanceToStop, maxDistanceToStop, speedFactor);
 
-        Vector3 myPosition = myCar.transform.position;
-        AIP1TrafficCar myCarScript = myCar.GetComponent<AIP1TrafficCar>(); // Get the script
+        Vector3 myPosition = myAgent.transform.position;
+        AIP1TrafficCar myCarScript = myAgent.GetComponent<AIP1TrafficCar>(); // Get the script
         List<Vector3> myPath = myCarScript.path_of_points;
         int myIndex = myCarScript.currentPathIndex;
 
@@ -31,7 +31,7 @@ public class Intersection
 
         foreach (var otherCar in m_OtherCars)
         {
-            if (otherCar == myCar) continue; // skip self
+            if (otherCar == myAgent) continue; // skip self
 
             //if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
 
@@ -55,7 +55,7 @@ public class Intersection
                     Vector3 otherEnd = otherPath[j+1];
 
                     float angle = Vector3.Angle(myEnd - myStart, otherEnd - otherStart);
-                    angle = Vector3.Angle(myCar.transform.forward, otherCar.transform.forward);
+                    angle = Vector3.Angle(myAgent.transform.forward, otherCar.transform.forward);
 
                     if (SegmentsIntersect(myStart, myEnd, otherStart, otherEnd, out Vector3 intersection))
                     {

@@ -59,8 +59,8 @@ public class AIP1TrafficCar : MonoBehaviour
     public bool drawTeamCars;
 
     public bool IsBeingFollowed = false;
-    public CarController followingCar = null;
-    public CarController carToFollow = null;
+    public GameObject followingCar = null;
+    public GameObject carToFollow = null;
 
     //For driving:
     private float waypoint_margin = 3f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
@@ -111,7 +111,7 @@ public class AIP1TrafficCar : MonoBehaviour
         teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
         m_OtherCars = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
 
-        m_Orca = new Orca(m_Car, my_rigidbody, m_OtherCars);
+        m_Orca = new Orca(this.gameObject, my_rigidbody, m_OtherCars);
 
         // Note that this array will have "holes" when objects are destroyed. For initial planning they should work.
         // If you don't like the "holes", you can re-fetch this during fixed update.
@@ -197,7 +197,7 @@ public class AIP1TrafficCar : MonoBehaviour
             //Check if we need to evade other cars with Orca:
             m_Orca.UpdateNeighboringAgents();
             Vector3 new_velocity;
-            if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
+            if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA("car"); //We have other agents close by, use ORCA
             else new_velocity = Vector3.zero;
             DriveAndRecover(new_velocity); //follow path, recover if stuck
         }
@@ -227,11 +227,11 @@ public class AIP1TrafficCar : MonoBehaviour
         target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
         old_target_pos = target_position;
 
-        hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars);
+        hasToStop = m_Intersection.HasToStop(this.gameObject, m_OtherCars);
 
         if (!isStuck)
         {
-            m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+            m_Formation.LineFormation(this.gameObject, m_OtherCars, target_position);
 
             if (hasToStop)
             {
