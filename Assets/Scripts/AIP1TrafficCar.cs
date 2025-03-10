@@ -327,8 +327,8 @@ public class AIP1TrafficCar : MonoBehaviour
             if (!hasToStop) // Check if you're stuck or if your're waiting for another car to go
             {
                 // If you have an obstacle behind you go forward
-                if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 70f, 70f, 0f);
-                else m_Car.Move(0f, -70f, -70f, 0f); //go backwards
+                if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 20f, 20f, 0f);
+                else m_Car.Move(0f, -20f, -20f, 0f); //go backwards
 
                 timeStuck -= 1;
                 if (timeStuck == 0) isStuck = false;
