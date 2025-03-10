@@ -49,9 +49,9 @@ public class Intersection
 
             if (otherPath == null || myPath == null) continue; // Ensure paths are valid
 
-            for (int i = Mathf.Max(myIndex-2, 0); i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++)
+            for (int i = Mathf.Max(myIndex-4, 0); i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++)
             {
-                for (int j = Mathf.Max(otherIndex-2, 0); j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++)
+                for (int j = Mathf.Max(otherIndex-4, 0); j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++)
                 {
                     myStart = myPath[i];
                     otherStart = otherPath[j];

@@ -67,7 +67,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
-    public float distToPoint = 6f;
+    public float distToPoint = 4f;
     public bool hasToStop;
 
     //private bool obstacles_close = false;
@@ -127,15 +127,33 @@ public class AIP1TrafficCar : MonoBehaviour
         Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
         Vector3 goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
 
+        // Get the current Y rotation angle (in degrees)
+        float currentAngle = m_Car.transform.rotation.eulerAngles.y;
+
+        // Find the closest multiple of 45 degrees
+        float closestMultipleOf45 = Mathf.Round(currentAngle / 45f) * 45f;
+
+        // Ensure the angle is within 0 to 360 degrees
+        float resultAngle = closestMultipleOf45 % 360f;
+
+        // If the result is negative, ensure it's within the positive range (0 to 360)
+        if (resultAngle < 0)
+        {
+            resultAngle += 360f;
+        }
+
         PriorityQueue Q = new PriorityQueue();
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
-        StateNode start_node = new StateNode(start_pos_global, 0f, goal_pos_global, null, m_MapManager, m_ObstacleMap);
+        StateNode start_node = new StateNode(start_pos_global, resultAngle, goal_pos_global, null, m_MapManager, m_ObstacleMap);
         Q.Enqueue(start_node);
 
         while (Q.Count != 0)
         {
             var current_node = Q.Dequeue();
-            visited_nodes.Add(current_node.cell_position, current_node);
+            if (!visited_nodes.ContainsKey(current_node.cell_position))
+            {
+                visited_nodes.Add(current_node.cell_position, current_node);
+            }
 
             if (Vector3.Distance(current_node.world_position, goal_pos_global) <=
                 this.waypoint_margin) //We have reached the goal, time to create the path
@@ -263,13 +281,13 @@ public class AIP1TrafficCar : MonoBehaviour
                 // Turn if you're too close to an obstacle
                 if (acceleration > 0)
                 {
-                    if (obsLeftClose) steering -= 1f;
-                    else if (obsRightClose) steering += 1f;
+                    if (obsLeftClose) steering -= 2f;
+                    else if (obsRightClose) steering += 2f;
                 }
                 else
                 {
-                    if (obsBackLeftClose) steering += 1f;
-                    else if (obsBackRightClose) steering -= 1f;
+                    if (obsBackLeftClose) steering += 2f;
+                    else if (obsBackRightClose) steering -= 2f;
                 }              
 
                 if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
@@ -278,19 +296,23 @@ public class AIP1TrafficCar : MonoBehaviour
 
             if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
             {
-                currentPathIndex++;
+                currentPathIndex++;          
 
                 if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
-                else {distToPoint = 4f; } //reset
+                else if (currentPathIndex < 4)
+                {
+                    distToPoint = 6f;
+                }
+                else { distToPoint = 4f; } //reset
 
                 if (currentPathIndex == path_of_points.Count) goal_reached = true;  
             }
 
             // If you're barely moving it means you're stuck
-            if (my_rigidbody.linearVelocity.magnitude < 0.5f)
+            if (my_rigidbody.linearVelocity.magnitude < 0.1f)
             {
                 timeStuck += 1;
-                if (timeStuck > 70) // If you're not moving for too long you're stuck
+                if (timeStuck > 100) // If you're not moving for too long you're stuck
                 {
                     isStuck = true;
                 }

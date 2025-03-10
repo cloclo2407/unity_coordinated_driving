@@ -119,7 +119,7 @@ public class StateNode : IComparable<StateNode> {
         Vector3 onMyLeft = this.world_position + leftDirection * 5f;
 
         // Get all colliders within the sphere
-        hit_colliders = Physics.OverlapSphere(onMyLeft, 3f, LayerMask.GetMask("Obstacle"));
+        hit_colliders = Physics.OverlapSphere(onMyLeft, 6f, LayerMask.GetMask("Obstacle"));
 
         // Initialize variables to store the closest hit info
         float min_left_hit_distance = Mathf.Infinity;
@@ -133,7 +133,7 @@ public class StateNode : IComparable<StateNode> {
 
             if (hit_distance < min_left_hit_distance) min_left_hit_distance = hit_distance;
         }
-        return (1/min_hit_distance)*200f + (1/min_left_hit_distance)*2000f; //The smaller the distance to closest obstacle, the higher the penalty cost
+        return /*(1/min_hit_distance)*10f +*/ (1/min_left_hit_distance)*1000f; //The smaller the distance to closest obstacle, the higher the penalty cost
     }
 
     public List<StateNode> makeChildNodes(Dictionary<Vector3Int, StateNode> visited_nodes, PriorityQueue Q, Vector3 global_goal_pos, MapManager mapManager, ObstacleMap obstacleMap, float cellength, String vehicle)
