@@ -10,8 +10,8 @@ public class Intersection
     float minDistanceToStop = 10f; // Minimum stopping distance (slow speeds)
     float maxDistanceToStop = 15f; // Maximum stopping distance (high speeds)
     float maxSpeed = 23f; // Define max expected speed for scaling
-    float minAngleToStop = 40f;
-    private float translationDistance = 1f;
+    float minAngleToStop = 35f;
+    private float translationDistance = 2f;
 
     public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
     {
@@ -39,12 +39,15 @@ public class Intersection
             if (otherCar == myCar) continue; // skip self
 
 
-            if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
+            //if (otherCar.GetComponent<Rigidbody>().linearVelocity.magnitude < 0.1f) continue; // ignore if the car is not moving
+
 
             Vector3 otherPosition = otherCar.transform.position;
             AIP1TrafficCar otherCarScript = otherCar.GetComponent<AIP1TrafficCar>(); // Get the script
             List<Vector3> otherPath = otherCarScript.path_of_points;
             int otherIndex = otherCarScript.currentPathIndex;
+
+            if (otherCarScript.goal_reached) continue;
 
 
             Vector3 myStart = myPosition;
@@ -52,9 +55,9 @@ public class Intersection
 
             if (otherPath == null || myPath == null) continue; // Ensure paths are valid
 
-            for (int i = Mathf.Max(myIndex-4, 0); i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++)
+            for (int i = Mathf.Max(myIndex-2, 0); i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++)
             {
-                for (int j = Mathf.Max(otherIndex-4, 0); j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++)
+                for (int j = Mathf.Max(otherIndex-2, 0); j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++)
                 {
                     myStart = myPath[i];
                     otherStart = otherPath[j];

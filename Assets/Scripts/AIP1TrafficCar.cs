@@ -26,7 +26,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private int crazyCarIndex = 1; //For debugging when a specific car is acting crazy
     private float waiting_multiplier = 0f;
     private bool start_moving = false;
-    private bool goal_reached = false;
+    public bool goal_reached = false;
 
     private CarController m_Car; // the car controller we want to use
     private BoxCollider carCollider; //unused BoxCollider
@@ -190,7 +190,7 @@ public class AIP1TrafficCar : MonoBehaviour
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
 
-        target_position = path_of_points[0];
+        target_position = path_of_points[1];
         old_target_pos = transform.position;
         
         StartCoroutine(wait()); //Wait to begin driving
@@ -244,8 +244,8 @@ public class AIP1TrafficCar : MonoBehaviour
         UpdateRaycast();
         if (target_position != path_of_points[currentPathIndex]) {
             target_position = path_of_points[currentPathIndex];
-            target_velocity = (target_position - old_target_pos) / 5f;
-            old_target_pos = target_position;
+            old_target_pos = path_of_points[currentPathIndex - 1];
+            target_velocity = (target_position - old_target_pos) / 2f;
         }
 
         hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars);
@@ -265,33 +265,37 @@ public class AIP1TrafficCar : MonoBehaviour
                 {
                     target_position = carToFollow.transform.position;
                     //target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.2f;
-                    target_position = target_position - carToFollow.transform.forward * 7f;
+                    target_position = target_position - carToFollow.transform.forward * 6f;
 
-                    if (currentPathIndex != path_of_points.Count - 1) distToPoint = 8f; // Can validate point from further if you're following a car
+                    if (currentPathIndex != path_of_points.Count - 1) distToPoint = 4f; // Can validate point from further if you're following a car
                 }
 
                 /*else if (orca_velocity != Vector3.zero)
                 {
                     target_position = transform.position + orca_velocity;
                     target_velocity = orca_velocity;
-                }*/
+                }**/
    
                 PdTracker();
 
                 // Turn if you're too close to an obstacle
                 if (acceleration > 0)
                 {
-                    if (obsLeftClose) steering -= 2f;
-                    else if (obsRightClose) steering += 2f;
+                    if (obsLeftClose) steering -= 3f;
+                    else if (obsRightClose) steering += 3f;
                 }
                 else
                 {
-                    if (obsBackLeftClose) steering += 2f;
-                    else if (obsBackRightClose) steering -= 2f;
-                }              
+                    if (obsBackLeftClose) steering += 3f;
+                    else if (obsBackRightClose) steering -= 3f;
+                }
 
-                if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
-                else if (carToFollow != null && Vector3.Distance(transform.position, carToFollow.transform.position) < 6f) m_Car.Move(0f, 0f, 100f, 100f);
+                //if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
+                if (carToFollow != null && Vector3.Distance(transform.position, carToFollow.transform.position) < 6f) 
+                {
+                    m_Car.Move(0f, 0f, 100f, 100f);
+                    timeStuck = 0;
+                }
                 else m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
@@ -328,8 +332,8 @@ public class AIP1TrafficCar : MonoBehaviour
             if (!hasToStop) // Check if you're stuck or if your're waiting for another car to go
             {
                 // If you have an obstacle behind you go forward
-                if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 20f, 20f, 0f);
-                else m_Car.Move(0f, -20f, -20f, 0f); //go backwards
+                if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 10f, 10f, 0f);
+                else m_Car.Move(0f, -10f, -10f, 0f); //go backwards
 
                 timeStuck -= 1;
                 if (timeStuck == 0) isStuck = false;
