@@ -7,6 +7,8 @@ using Scripts.Map;
 
 public class ImprovePath
 {
+    private float maxSegmentLength = 4f;
+
     public List<Vector3> SmoothSplineCatmullRom(List<Vector3> originalPath, int subdivisionsPerSegment = 5)
     {
         List<Vector3> smooth_path_of_points = new List<Vector3>();
@@ -88,6 +90,16 @@ public class ImprovePath
             simplifyRecursive(path, startIndex, indexFurthest, epsilon, new_path); // simplify first part of the segment
             new_path.Add(path[indexFurthest]); // add the point
             simplifyRecursive(path, indexFurthest, endIndex, epsilon, new_path); // simplify second part of the segment
+        }
+
+        else if (Vector3.Distance(startPoint, endPoint) > maxSegmentLength) // enforce max segment length
+        {
+            int numSegments = Mathf.CeilToInt(Vector3.Distance(startPoint, endPoint) / maxSegmentLength);
+            for (int i = 1; i < numSegments; i++)
+            {
+                Vector3 intermediatePoint = Vector3.Lerp(startPoint, endPoint, (float)i / numSegments);
+                new_path.Add(intermediatePoint);
+            }
         }
     }
 
