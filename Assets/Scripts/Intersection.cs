@@ -20,6 +20,7 @@ public class Intersection
 
         Vector3 myPosition = myAgent.transform.position;
         AIP1TrafficCar myCarScript = myAgent.GetComponent<AIP1TrafficCar>(); // Get the script
+        // IF myAgent IS A DRONE, "myCarScript" cannot be of type AIP1TrafficCar! Runtime Error!!!!
         List<Vector3> myPath = myCarScript.path_of_points;
         int myIndex = myCarScript.currentPathIndex;
 

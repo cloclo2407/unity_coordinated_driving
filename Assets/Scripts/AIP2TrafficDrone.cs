@@ -100,8 +100,8 @@ public class AIP2TrafficDrone : MonoBehaviour
         my_rigidbody = GetComponent<Rigidbody>();
 
         m_improvePath = new ImprovePath();
-        m_Formation = new Formation();
-        m_Intersection = new Intersection();
+        //m_Formation = new Formation();
+        //m_Intersection = new Intersection();
         
         m_MapManager = FindFirstObjectByType<MapManager>();
         Vector3 cell_scale = Vector3.one * 3f;
@@ -168,7 +168,7 @@ public class AIP2TrafficDrone : MonoBehaviour
         }   
 
         //Catmull-Rom:
-        //path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
+        path_of_points = m_improvePath.SmoothSplineCatmullRom(path_of_points, 5);
         //path_of_points = m_improvePath.simplifyPath(path_of_points, 0.1f); //Disabled because it helps ORCA to have closer waypoints
         //for (int j = 0; j < path_of_points.Count-1; j++)
         //{ Debug.DrawLine(path_of_points[j] + Vector3.up, path_of_points[j+1] + Vector3.up, Color.yellow, 1000f); }
@@ -223,107 +223,25 @@ public class AIP2TrafficDrone : MonoBehaviour
 
     private void DriveAndRecover(Vector3 orca_velocity) 
     { //Follow waypoints and do collision recovery
-        //Detect obstacles
-        UpdateRaycast();
-        target_position = path_of_points[currentPathIndex];
-        target_velocity = (target_position - old_target_pos) / Time.fixedDeltaTime;
-        old_target_pos = target_position;
 
-        hasToStop = m_Intersection.HasToStop(this.gameObject, m_OtherCars);
+        if (orca_velocity == Vector3.zero)
+        { target_position = path_of_points[currentPathIndex]; }
 
-        if (!isStuck)
+        else 
+        { target_position = transform.position + orca_velocity; }
+        
+        (float h_input, float v_input) = droneController();
+        m_Drone.Move(h_input, v_input);
+        
+        if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
         {
-            m_Formation.LineFormation(this.gameObject, m_OtherCars, target_position);
-
-            if (hasToStop)
-            {
-                //m_Car.Move(0f, 0f, 100f, 1000f);
-                StopDrone();
-            }
-
-            else
-            {
-                if (carToFollow != null)
-                {
-                    target_position = carToFollow.transform.position;
-                    //target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.2f;
-                    target_position = target_position - target_velocity.normalized * 7f; // Aim for behind the car
-                    target_position = target_position - carToFollow.transform.forward * 5f;
-
-                    if (currentPathIndex != path_of_points.Count - 1) distToPoint = 6f; // Can validate point from further if you're following a car
-                }
-
-                else if (orca_velocity != Vector3.zero)
-                {
-                    target_position = transform.position + orca_velocity;
-                    target_velocity = orca_velocity;
-                }
-   
-                droneController();
-
-                // Turn if you're too close to an obstacle
-                if (acceleration > 0)
-                {
-                    if (obsLeftClose) steering -= 1f;
-                    else if (obsRightClose) steering += 1f;
-                }
-                else
-                {
-                    if (obsBackLeftClose) steering += 1f;
-                    else if (obsBackRightClose) steering -= 1f;
-                }              
-
-                if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) StopDrone();//m_Car.Move(0f, 0f, 100f, 100f);
-                else m_Car.Move(steering, acceleration, acceleration, 0f);
-                //TODO TODO TODO
-                // TODO Get a drone controller working!
-                
-            }
-
-            if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
-            {
-                currentPathIndex++;
-
-                if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
-                else {distToPoint = 4f; } //reset
-
-                if (currentPathIndex == path_of_points.Count) goal_reached = true;  
-            }
-
-            // If you're barely moving it means you're stuck
-            if (my_rigidbody.linearVelocity.magnitude < 0.5f)
-            {
-                timeStuck += 1;
-                if (timeStuck > 70) // If you're not moving for too long you're stuck
-                {
-                    isStuck = true;
-                }
-            }
-            else timeStuck = 0;
-            
-            Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity            
+            currentPathIndex++;
+            if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
+            else {distToPoint = 4f; } //reset
+            if (currentPathIndex == path_of_points.Count) goal_reached = true;  
         }
 
-        else //if stuck:
-        {
-            if (!hasToStop) // Check if you're stuck or if your're waiting for another car to go
-            {
-                // If you have an obstacle behind you go forward
-                //if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Car.Move(0f, 100f, 100f, 0f);
-                //else m_Car.Move(0f, -100f, -100f, 0f); //go backwards
-                UnStuck();
-                    
-                timeStuck -= 1;
-                if (timeStuck == 0) isStuck = false;
-            }
-            else
-            {
-                timeStuck = 0;
-                isStuck = false;
-                //m_Car.Move(0f, 0f, 100f, 1000f);
-                StopDrone();
-            }
-        }
+        Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.black); //Draws white line if we have nonzero orca velocity            
     }
 
     private int FindNearestForwardIndex(Vector3 currentPosition, int startIndex, float searchRadius)
@@ -355,6 +273,8 @@ public class AIP2TrafficDrone : MonoBehaviour
         float h_in = 0f;
         float v_in = 0f;
         
+        // TODO WHAT ABOUT obsStraightRightClose AND obsStraightLeftClose???????? ADD THEM! Where else in the program are they needed?
+        
         if (obsRightClose) h_in += -1f;
         if (obsLeftClose) h_in += 1f;
         if (obsStraightClose) v_in += -1f;
@@ -368,7 +288,7 @@ public class AIP2TrafficDrone : MonoBehaviour
     private void StopDrone()
     { //Method makes drone stop moving
         
-        //NEEDS TESTING!!!!
+        // TODO NEEDS TESTING!!!!
 
         float h_input = 0f;
         float v_input = 0f;
@@ -383,30 +303,39 @@ public class AIP2TrafficDrone : MonoBehaviour
     }
     private (float, float) droneController()
     {
-        float distance = Vector3.Distance(target_position, transform.position);
-
-        // Scale k_p and k_d based on distance between 1 and 10
-        float scaleFactor = Mathf.Clamp(distance / 2f, 1f, 1f);  // Adjust 5f(first one) to control sensitivity, bigger means accelarate more abruptly
-        float k_p_dynamic = Mathf.Lerp(3f, 4f, scaleFactor / 1f);
-        float k_d_dynamic = Mathf.Lerp(4f, 4f, scaleFactor / 1f);
-
-        float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
-        Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
-
-        // a PD-controller to get desired acceleration from errors in position and velocity
-        Vector3 position_error = target_position - transform.position;
-        Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
-        Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
-
-        steering = Vector3.Dot(desired_acceleration, transform.right);
-        acceleration = Vector3.Dot(desired_acceleration, transform.forward);
-
-        Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
-
-        float acc_h = 0f;
-        float acc_v = 0f;
+        //Calculate vector to target position
+        Vector3 toTarget = target_position - transform.position;
+        toTarget.y = 0f;
         
-        return (acc_h, acc_v);
+        // Get angle to target waypoint
+        float signedAngle = Vector3.SignedAngle(transform.forward, toTarget, Vector3.up);
+        float angleRad = signedAngle * Mathf.Deg2Rad; //convert angle to radians
+
+        // Calculate movements in horizontal/ vertical directions
+        float horizontal = Mathf.Sin(angleRad);
+        float vertical = Mathf.Cos(angleRad);
+
+        // Debug velocity vector
+        Debug.DrawLine(transform.position, transform.position + my_rigidbody.linearVelocity, Color.yellow);
+        if (my_rigidbody.linearVelocity.magnitude >= speed_limit)
+        {
+            Vector3 deaccelerationVector = -my_rigidbody.linearVelocity.normalized;
+            float excessSpeed = my_rigidbody.linearVelocity.magnitude - speed_limit;
+            float decelerationFactor = Mathf.Clamp01((excessSpeed + 1) / speed_limit);
+            //m_Drone.Move(deaccelerationVector.x * decelerationFactor, deaccelerationVector.z * decelerationFactor);
+            //Debug.DrawLine(transform.position, transform.position + deaccelerationVector, Color.green);
+            //Debug.Log($"Speed too high! Reducing with factor: {decelerationFactor}, DecelerationForce: {deaccelerationVector}");
+            return (deaccelerationVector.x * decelerationFactor, deaccelerationVector.z*decelerationFactor);
+        }
+        else
+        {
+            //m_Drone.Move(horizontal * droneSpeedCap, vertical * droneSpeedCap);
+            //m_Drone.Move(horizontal, vertical);
+            return (horizontal, vertical);
+        }
+
+        //Debug.Log($"Angle: {signedAngle}° | H: {horizontal} | V: {vertical} " +
+        //          $"| Speed: {my_rigidbody.linearVelocity.magnitude} | Limit: {speedLimit}");
     }
 
     private void UpdateRaycast()

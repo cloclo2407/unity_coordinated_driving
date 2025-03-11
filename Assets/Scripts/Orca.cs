@@ -30,15 +30,24 @@ public class Orca
         Vector3 v_A = m_rigidbody.linearVelocity; //Let this be agent A and other be agent B
         Vector3 pos_A = m_Agent.transform.position;
         float car_radius = 0f;
-        if (vehicle == "car") car_radius = 2.2f; //We approximate the car as a circular robot with radius 2.2 based on the prefab model
-        else if (vehicle == "drone") car_radius = 0.5f; //The drone is approximated as a capsule with radius 0.5 in the prefab model 
+        int myCarIndex = 0;
+        if (vehicle == "car")
+        {
+            car_radius = 2.2f; //We approximate the car as a circular robot with radius 2.2 based on the prefab model
+            myCarIndex = m_Agent.GetComponent<AIP1TrafficCar>().myCarIndex;
+        }
+        else if (vehicle == "drone")
+        {
+            car_radius = 0.6f; //The drone is approximated as a capsule with radius 0.5 in the prefab model 
+            myCarIndex = m_Agent.GetComponent<AIP2TrafficDrone>().myCarIndex;
+        }
         else Debug.Log("vehicle string parameter must be either car or drone!");
+        
         
         foreach (GameObject other_agent in neighbor_agents)
         {
             //Check if we are on collision course with other agent. Compute and store constraint if that is the case.
-            var rigidbody_B = other_agent.GetComponent<Rigidbody>();
-            Vector3 v_B = rigidbody_B.linearVelocity;
+            Vector3 v_B = other_agent.GetComponent<Rigidbody>().linearVelocity;
             Vector3 pos_B = other_agent.transform.position;
             Vector3 relative_velocity = (v_A - v_B); //Is this the correct way of calculating relative_vel
             Vector3 relative_position = (pos_B - pos_A); // and relative_pos?
@@ -51,43 +60,40 @@ public class Orca
             //angle <0 means relative_vel is rotated counterclockwise from relative_pos by angle degrees
             //angle >0 means relative_vel is rotated clockwise from relative_pos by angle degrees
 
-            if (Mathf.Abs(relative_vectors_signed_angle) < theta && relative_velocity.magnitude < max_considered_velocity.magnitude)
+            if (Mathf.Abs(relative_vectors_signed_angle) < theta)//&& relative_velocity.magnitude < max_considered_velocity.magnitude)
             {
                 //We have a collision to avoid. Let's compute and store the constraint for the new velocity
-
+                int otherCarIndex = 0;
+                if (vehicle == "car")
+                { otherCarIndex = other_agent.GetComponent<AIP1TrafficCar>().myCarIndex; }
+                else if (vehicle == "drone")
+                { otherCarIndex = other_agent.GetComponent<AIP2TrafficDrone>().myCarIndex; }
+                
+                Vector3 projected_relative_velocity;
                 if (relative_vectors_signed_angle < 0) //relative_vel in left triangle of VO
                 {
                     Vector3 left_bound_vector = Quaternion.Euler(0, theta, 0) * relative_position;
-                    Vector3 projected_relative_velocity = Vector3.Project(relative_velocity, left_bound_vector);
-                    Vector3 smallest_change_to_avoid_collision = projected_relative_velocity - relative_velocity;
-                    Vector3 point_defining_constraint = v_A + 0.5f * smallest_change_to_avoid_collision;
-                    Vector3 norm_defining_constraint = Vector3.Normalize(smallest_change_to_avoid_collision);
-                    Tuple<Vector3, Vector3> new_constraint =
-                        new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
-                    orca_constraints.Add(new_constraint);
+                    projected_relative_velocity = Vector3.Project(relative_velocity, left_bound_vector);
                 }
-
-                //NOTE: left_bound_vector has the correct direction of the left bound of the left triangle, but has
-                //the wrong magnitude, same mag as relative_pos. Since we are only using left_bound_vector as a vector
-                //to project relative_vel onto, its magnitude doesn't matter as long as the direction is correct.
-                // Proof: let * be the scalar product, k be a scalar and u,v be vectors:
-                //proj_u_on_v = (u*v / v*v)v. If v is scaled by scalar k, its magnitude is changed but direction is not:
-                //proj_u_on_kv = (u*(kv) / kv*kv)(kv) = (k/k^2)(u*v/v*v)(kv) = (k^2/k^2)(u*v/v*v)v = (u*v/v*v)v
-
                 else //signed_angle >= 0, relative_vel in right triangle of VO
                 {
                     Vector3 right_bound_vector = Quaternion.Euler(0, -theta, 0) * relative_position;
-                    Vector3 projected_relative_velocity = Vector3.Project(relative_velocity, right_bound_vector);
-                    Vector3 smallest_change_to_avoid_collision = projected_relative_velocity - relative_velocity;
-                    Vector3 point_defining_constraint = v_A + 0.5f * smallest_change_to_avoid_collision;
-                    Vector3 norm_defining_constraint = Vector3.Normalize(smallest_change_to_avoid_collision);
-                    Tuple<Vector3, Vector3> new_constraint =
-                        new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
-                    orca_constraints.Add(new_constraint);
+                    projected_relative_velocity = Vector3.Project(relative_velocity, right_bound_vector);
                 }
+                
+                Vector3 smallest_change_to_avoid_collision = projected_relative_velocity - relative_velocity; //called vector u in report
+                
+                Vector3 point_defining_constraint;
+                if (myCarIndex > otherCarIndex)
+                { point_defining_constraint = v_A + 0.7f * smallest_change_to_avoid_collision; } //*0.5f to share responsibility equally
+                else
+                { point_defining_constraint = v_A + 0.3f * smallest_change_to_avoid_collision; } //*0.5f to share responsibility equally
+                
+                Vector3 norm_defining_constraint = Vector3.Normalize(smallest_change_to_avoid_collision);
+                Tuple<Vector3, Vector3> new_constraint = new Tuple<Vector3, Vector3>(point_defining_constraint, norm_defining_constraint);
+                orca_constraints.Add(new_constraint);
             }
         }
-
         if (orca_constraints.Count > 0) //We have an optimization problem to solve
         {
             //Draw constraint-lines and corrsponding normals for debugging:
@@ -100,14 +106,14 @@ public class Orca
                 Vector3 line_starting_point = m_Agent.transform.position + constraint.Item1;
 
                 //Draw normal to constraint-line
-                //Debug.DrawLine(line_starting_point, line_starting_point + constraint.Item2 * 5f, Color.yellow);
+                Debug.DrawLine(line_starting_point, line_starting_point + constraint.Item2 * 5f, Color.yellow);
                 //Draw each halves of the line (left and right)
-                //Debug.DrawLine(line_starting_point, line_starting_point + (0.5f * neighbor_radius * parallel_vector), Color.cyan);
-                //Debug.DrawLine(line_starting_point, line_starting_point + (-0.5f * neighbor_radius * parallel_vector), Color.cyan);
+                Debug.DrawLine(line_starting_point, line_starting_point + (0.5f * neighbor_radius * parallel_vector), Color.cyan);
+                Debug.DrawLine(line_starting_point, line_starting_point + (-0.5f * neighbor_radius * parallel_vector), Color.cyan);
             }
 
             //Solve quadratic programming problem according to orca_constraints and return new safe velocity
-            Vector3 new_velocity = solveForNewVelocity();
+            Vector3 new_velocity = solveForNewVelocity(vehicle);
             //Execute new safe velocity
             return new_velocity;
         }
@@ -116,17 +122,24 @@ public class Orca
         {
             return Vector3.zero; //follow path, recover if stuck
         }
+        
     }
 
-    private Vector3 solveForNewVelocity()
+    private Vector3 solveForNewVelocity(String vehicle)
     {
         int numVars = 2; // v_x and v_z
         int numConstraints = orca_constraints.Count;
 
+        Vector3 target_wp = Vector3.zero;
+        if (vehicle == "car")
+        { target_wp = m_Agent.GetComponent<AIP1TrafficCar>().target_position; }
+        else if (vehicle == "drone")
+        { target_wp = m_Agent.GetComponent<AIP2TrafficDrone>().target_position; }
+
         // Got recommended to switch desired_velocity from current_velocity to the vector between the car's pos and its next waypoint:
-        //Vector3 next_waypoint = path_of_points[currentPathIndex];
-        //desired_velocity = transform.position - next_waypoint; //Current velocity worked better?
-        Vector3 desired_velocity = m_rigidbody.linearVelocity; //FOR NOW THE DESIRED VELOCITY IS SET AS THE CURRENT VELOCITY
+        Vector3 next_waypoint = target_wp; //path_of_points[currentPathIndex];
+        Vector3 desired_velocity = next_waypoint - m_rigidbody.gameObject.transform.position; //Current velocity worked better?
+        //Vector3 desired_velocity = m_rigidbody.linearVelocity; //FOR NOW THE DESIRED VELOCITY IS SET AS THE CURRENT VELOCITY
 
         // Define matrix H (gives quadratic terms, found via calculations with pen and paper)
         double[,] H = { { 2, 0 }, { 0, 2 } };
@@ -155,7 +168,7 @@ public class Orca
         alglib.minqpsetquadraticterm(state, H, false); //false bool says to ALGLIB that H is symmetric, which it is.
         alglib.minqpsetlinearterm(state, c);
         alglib.minqpsetlc2dense(state, A, b, upper_bound); // Inequality constraints
-        alglib.minqpsetbc(state, new double[] { -5, -5 }, new double[] { 5, 5 }); // Bounds for velocity to avoid impossibly high speeds
+        alglib.minqpsetbc(state, new double[] { -7, -7 }, new double[] { 7, 7 }); // Bounds for velocity to avoid impossibly high speeds
         alglib.minqpoptimize(state);
         alglib.minqpresults(state, out solution, out report);
 
@@ -192,16 +205,7 @@ public class Orca
             else break; //If we only want to add 5 closest cars, let i go from 0 to 4 and then break out of for-loop, based on max_considered_neighbors
         }
 
-        /* //This solution did not work as the ground plane, goal, and start positions also are placed in the Default layer
-        LayerMask agentlayer = LayerMask.GetMask("Default"); //All agents are in the Defaul layer. Any other gameobject with a collider is in the Obstacle layer
-        neighbor_agents.Clear(); //Clear list from old neighbor-agents before we add new ones below:
-        Collider[] collider_hits = Physics.OverlapSphere(transform.position, neighbor_radius, agentlayer); //Returns array of colliders of gameobjects inside sphere
-
-        foreach (Collider hit in collider_hits)
-        {
-            if (hit.gameObject != gameObject) neighbor_agents.Add(hit.gameObject); // Ignore collider of car using Overlapshere to find nearby agents' colliders
-        }
-        */
+        //Debug.Log("Number of neighbor agents: " + neighbor_agents.Count);
     }
 
     public bool NeedOrca()
