@@ -63,7 +63,7 @@ public class AIP1TrafficCar : MonoBehaviour
     public CarController carToFollow = null;
 
     //For driving:
-    private float waypoint_margin = 3f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
+    private float waypoint_margin = 4f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
@@ -104,6 +104,7 @@ public class AIP1TrafficCar : MonoBehaviour
         
         m_MapManager = FindFirstObjectByType<MapManager>();
         Vector3 cell_scale = Vector3.one * 3f;
+        float cell_size = 3f;
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), cell_scale);
         m_ObstacleMap.margin = Vector3.one * 2f; // (Changing cell margins, do they work?)
 
@@ -127,6 +128,13 @@ public class AIP1TrafficCar : MonoBehaviour
 
         Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
         Vector3 goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
+
+        Debug.Log("initial start : " + start_pos_global);
+
+        start_pos_global = SnapToGridCenter(start_pos_global, cell_size);
+        //goal_pos_global = SnapToGridCenter(goal_pos_global, cell_size);
+
+        Debug.Log("transformed start : " + start_pos_global);
 
         // Get the current Y rotation angle (in degrees)
         float currentAngle = m_Car.transform.rotation.eulerAngles.y;
@@ -306,7 +314,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
                 else if (currentPathIndex < 4)
                 {
-                    distToPoint = 6f;
+                    distToPoint = 4f;
                 }
                 else { distToPoint = 4f; } //reset
 
@@ -417,6 +425,15 @@ public class AIP1TrafficCar : MonoBehaviour
         Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
         Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
         Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue); */
+    }
+
+    Vector3 SnapToGridCenter(Vector3 position, float cell_scale)
+    {
+        return new Vector3(
+            Mathf.Round(position.x / cell_scale) * cell_scale + cell_scale / 2f,
+            position.y, // Keep the original Y value
+            Mathf.Round(position.z / cell_scale) * cell_scale + cell_scale / 2f
+        );
     }
 
 }
