@@ -145,7 +145,7 @@ public class StateNode : IComparable<StateNode> {
         Vector3 leftDirection = Quaternion.Euler(0, -90, 0) * forward;
 
         // Compute the new position
-        Vector3 onMyLeft = this.world_position + leftDirection * 5f;
+        Vector3 onMyLeft = this.world_position + leftDirection * 4f;
 
         // Get all colliders within the sphere
         hit_colliders = Physics.OverlapSphere(onMyLeft, 6f, LayerMask.GetMask("Obstacle"));
