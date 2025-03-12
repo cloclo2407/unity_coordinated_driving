@@ -58,29 +58,22 @@ public class AIP1TrafficCar : MonoBehaviour
     public bool drawAllCars;
     public bool drawTeamCars;
 
-    public bool IsBeingFollowed = false;
-    public CarController followingCar = null;
-    public CarController carToFollow = null;
+    public bool IsBeingFollowed = false; // indicates if you're being followed by another car
+    public CarController followingCar = null; // contains that is following you
+    public CarController carToFollow = null; // contains the car you are following
 
     //For driving:
     private float waypoint_margin = 4f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
-    float safeFollowDistance = 4f; // Minimum distance to keep behind the car we're following
-    public float distToPoint = 4f;
+    float safeFollowDistance = 6f; // Minimum distance to keep behind the car we're following
+    public float distToPoint = 4f; // min distance to go to the next point in path
     public bool hasToStop; // for intersection
-    public bool hasToWait = false;
 
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
 
-    private float obstacle_avoiding_steering = 0f; //Addition to steering input calculated via raycasts of environment
-
-    //private float obstacle_avoiding_accel = 0f;    //in order to steer away from obstacles, but remain on path
-    private float obstacle_avoiding_steering_limit = 40f; //TODO
-    //private float obstacle_avoiding_accel_limit = 0f; //TODO
-    //private bool open_area = false; //Sets parameters for driving in open areas, like TerrainA. TODO
-    //private bool cluttered_area = true; //Sets parameters for driving in cluttered areas, like TerrainD. TODO
+    private float obstacle_avoiding_steering = 3f; //Addition to steering input calculated via raycasts of environment
 
     public float steering;
     public float acceleration;
@@ -103,8 +96,8 @@ public class AIP1TrafficCar : MonoBehaviour
         m_Intersection = new Intersection();
         
         m_MapManager = FindFirstObjectByType<MapManager>();
-        Vector3 cell_scale = Vector3.one * 3f;
         float cell_size = 3f;
+        Vector3 cell_scale = Vector3.one * cell_size;
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), cell_scale);
         m_ObstacleMap.margin = Vector3.one * 2f; // (Changing cell margins, do they work?)
 
@@ -129,13 +122,9 @@ public class AIP1TrafficCar : MonoBehaviour
         Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
         Vector3 goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
 
-        Debug.Log("initial start : " + start_pos_global);
+        start_pos_global = SnapToGridCenter(start_pos_global, cell_size); // Update to center of cell
 
-        start_pos_global = SnapToGridCenter(start_pos_global, cell_size);
-        //goal_pos_global = SnapToGridCenter(goal_pos_global, cell_size);
-
-        Debug.Log("transformed start : " + start_pos_global);
-
+        // Calculate the starting angle of the car
         // Get the current Y rotation angle (in degrees)
         float currentAngle = m_Car.transform.rotation.eulerAngles.y;
 
@@ -222,10 +211,10 @@ public class AIP1TrafficCar : MonoBehaviour
         {
             //Checks if we have any driving left to do
             //Check if we need to evade other cars with Orca:
-            m_Orca.UpdateNeighboringAgents();
+            //m_Orca.UpdateNeighboringAgents();
             Vector3 new_velocity;
-            if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
-            else new_velocity = Vector3.zero;
+            //if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
+            //else new_velocity = Vector3.zero;
             DriveAndRecover(new_velocity); //follow path, recover if stuck
         }
     }
@@ -241,39 +230,42 @@ public class AIP1TrafficCar : MonoBehaviour
         if (hasToStop)
         {
             Handles.color = Color.blue; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
-            Handles.DrawWireDisc(transform.position, Vector3.up, 4f);
+            Handles.DrawWireDisc(transform.position, Vector3.up, 4f); // draw a blue circle around a car that is stopping for intersection
         }
 
     }
 
+    //Follow waypoints and do collision recovery
     private void DriveAndRecover(Vector3 orca_velocity) 
-    { //Follow waypoints and do collision recovery
+    { 
         //Detect obstacles
         UpdateRaycast();
-        if (target_position != path_of_points[currentPathIndex]) {
+
+        // Update target and old target to the current index in the path
+        if (target_position != path_of_points[currentPathIndex]) 
+        {
             target_position = path_of_points[currentPathIndex];
             old_target_pos = path_of_points[currentPathIndex - 1];
             target_velocity = (target_position - old_target_pos) / 2f;
         }
 
-        hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars);
+        hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars); // Check if if we have to stop
 
-        if (!isStuck)
+        if (!isStuck) // If the car is not stuck
         {
-            m_Formation.LineFormation(m_Car, m_OtherCars, target_position);
+            m_Formation.LineFormation(m_Car, m_OtherCars, target_position); // Check for car to follow
 
-            if (hasToStop)
+            if (hasToStop) // If I have to stop for intersection, break
             {
                 m_Car.Move(0f, 0f, 100f, 1000f);
             }
 
             else
             {
-                if (carToFollow != null)
+                if (carToFollow != null) // I'm following a car
                 {
                     target_position = carToFollow.transform.position;
-                    //target_velocity = carToFollow.GetComponent<Rigidbody>().linearVelocity * 0.2f;
-                    target_position = target_position - carToFollow.transform.forward * 6f;
+                    target_position = target_position - carToFollow.transform.forward * safeFollowDistance; // Aim for behind the car
 
                     if (currentPathIndex != path_of_points.Count - 1) distToPoint = 4f; // Can validate point from further if you're following a car
                 }
@@ -284,34 +276,39 @@ public class AIP1TrafficCar : MonoBehaviour
                     target_velocity = orca_velocity;
                 }**/
    
-                PdTracker();
+                PdTracker(); // Update acceleration and steering values for driving
 
                 // Turn if you're too close to an obstacle
                 if (acceleration > 0)
                 {
-                    if (obsLeftClose) steering -= 3f;
-                    else if (obsRightClose) steering += 3f;
+                    if (obsLeftClose) steering -= obstacle_avoiding_steering;
+                    else if (obsRightClose) steering += obstacle_avoiding_steering;
                 }
                 else
                 {
-                    if (obsBackLeftClose) steering += 3f;
-                    else if (obsBackRightClose) steering -= 3f;
+                    if (obsBackLeftClose) steering += obstacle_avoiding_steering;
+                    else if (obsBackRightClose) steering -= obstacle_avoiding_steering;
                 }
-
-                //if (carToFollow != null && Vector3.Angle(target_position-transform.position, transform.forward) > 50f) m_Car.Move(0f, 0f, 100f, 100f);
-                if (carToFollow != null && Vector3.Distance(transform.position, carToFollow.transform.position) < 6f) 
+                
+                // Break if I'm too close to the car I follow, help inserting to keep a distance between cars
+                if (carToFollow != null && Vector3.Distance(transform.position, carToFollow.transform.position) < safeFollowDistance) 
                 {
                     m_Car.Move(0f, 0f, 100f, 100f);
                     timeStuck = 0;
                 }
+
+                //Drive
                 else m_Car.Move(steering, acceleration, acceleration, 0f);              
             }
 
+            // Update currentPathIndex
             if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
             {
                 currentPathIndex++;          
 
                 if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
+
+                // Can set a bigger distance to help the beginning
                 else if (currentPathIndex < 4)
                 {
                     distToPoint = 4f;
@@ -321,7 +318,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 if (currentPathIndex == path_of_points.Count) goal_reached = true;  
             }
 
-            // If you're barely moving it means you're stuck
+            // If you're barely moving it means you may be stuckstuck
             if (my_rigidbody.linearVelocity.magnitude < 0.1f)
             {
                 timeStuck += 1;
@@ -331,8 +328,6 @@ public class AIP1TrafficCar : MonoBehaviour
                 }
             }
             else timeStuck = 0;
-            
-            Debug.DrawLine(transform.position, transform.position + orca_velocity, Color.white); //Draws white line if we have nonzero orca velocity            
         }
 
         else //if stuck:
@@ -346,7 +341,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 timeStuck -= 1;
                 if (timeStuck == 0) isStuck = false;
             }
-            else
+            else // you're not stuck you're just waiting at an intersection
             {
                 timeStuck = 0;
                 isStuck = false;
@@ -355,6 +350,7 @@ public class AIP1TrafficCar : MonoBehaviour
         }
     }
 
+    // Not used for now
     private int FindNearestForwardIndex(Vector3 currentPosition, int startIndex, float searchRadius)
     {
         int nearestIndex = startIndex;
@@ -378,13 +374,16 @@ public class AIP1TrafficCar : MonoBehaviour
         }
         return Mathf.Max(nearestIndex, currentPathIndex);
     }
-
+    
+    /*
+     * Pd_tracker to update steering and acceleration based on target_position and old_target_position
+     */
     private void PdTracker()
     {
         float distance = Vector3.Distance(target_position, transform.position);
 
         // Scale k_p and k_d based on distance between 1 and 10
-        float scaleFactor = Mathf.Clamp(distance / 2f, 1f, 1f);  // Adjust 5f(first one) to control sensitivity, bigger means accelarate more abruptly
+        float scaleFactor = Mathf.Clamp(distance / 2f, 1f, 1f);  // Adjust 2f(first one) to control sensitivity, bigger means accelarate more abruptly
         float k_p_dynamic = Mathf.Lerp(3f, 4f, scaleFactor / 1f);
         float k_d_dynamic = Mathf.Lerp(4f, 4f, scaleFactor / 1f);
 
@@ -402,6 +401,11 @@ public class AIP1TrafficCar : MonoBehaviour
         Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
     }
 
+    /*
+     * Detect obstacles around the car
+     * Used to add steering if needed
+     * Used to move forward or backwars if stuck
+     */
     private void UpdateRaycast()
     {
         // Rotate the car's forward vector by �30� to get left/right directions for the raycast
@@ -427,6 +431,7 @@ public class AIP1TrafficCar : MonoBehaviour
         Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue); */
     }
 
+    // Function to round starting coordinates to the center of the cell
     Vector3 SnapToGridCenter(Vector3 position, float cell_scale)
     {
         return new Vector3(
