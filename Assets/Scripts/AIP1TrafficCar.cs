@@ -212,7 +212,7 @@ public class AIP1TrafficCar : MonoBehaviour
             //Checks if we have any driving left to do
             //Check if we need to evade other cars with Orca:
             //m_Orca.UpdateNeighboringAgents();
-            Vector3 new_velocity;
+            Vector3 new_velocity = Vector3.zero;
             //if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
             //else new_velocity = Vector3.zero;
             DriveAndRecover(new_velocity); //follow path, recover if stuck
