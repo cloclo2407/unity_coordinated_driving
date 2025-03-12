@@ -17,7 +17,8 @@ public class StateNode : IComparable<StateNode> {
     public StateNode parent_node;
     public float cost_to_come;
     public float cost_to_go;                                           
-    //public float turning_penalty;                                   
+    //public float turning_penalty;
+    public float other_goals_penalty; //Penalty for choosing positions close to other cars' goals
     public float close_to_obstacle_penalty; //High penalty to stay
     public float combined_cost;             //away from walls
     // Implementing a hashset (dictionary with only keys) for keeping track of all visited nodes by all runs of A* for all cars
@@ -76,10 +77,35 @@ public class StateNode : IComparable<StateNode> {
         // Sounds slightly computationally expensive to me :l
         
         //this.close_to_used_wp_penalty = (used_waypoints.Contains(cell_position) ? 10f : 0f); //If reused waypoint, cost+=10
-        this.close_to_obstacle_penalty = calculatePenalty();
-        this.combined_cost = this.cost_to_come + this.cost_to_go + this.close_to_obstacle_penalty; //+ this.close_to_used_wp_penalty; //+ turning_penalty;
+        this.close_to_obstacle_penalty = calculateObstaclePenalty();
+        this.other_goals_penalty = calculateOtherGoalsPenalty(mapManager);
+        this.combined_cost = this.cost_to_come + this.cost_to_go + this.close_to_obstacle_penalty + this.other_goals_penalty; //+ this.close_to_used_wp_penalty; //+ turning_penalty;
     }
 
+    private float calculateOtherGoalsPenalty(MapManager mapManager)
+    {
+        var all_goal_pos = mapManager.targetPositions;
+        float close_to_other_goal_penalty = 0f;
+
+        for (int j = 0; j < all_goal_pos.Count; j++)
+        {
+            float distance_to_goal = Vector3.Distance(this.world_position, all_goal_pos[j]);
+            
+            if ((distance_to_goal < 10f) && all_goal_pos[j] != this.goal_world_position) //if distance_to_goal<7, and it's not our goal 
+            {
+                if (distance_to_goal == 0f) //Just to not risk raising division by zero error
+                { close_to_other_goal_penalty += 1000f; }
+                else 
+                {
+                    //Increase penalty for every goal at distance <10 that is not our goal
+                    close_to_other_goal_penalty += (1/distance_to_goal)*100f;
+                }
+            }
+        }
+
+        return close_to_other_goal_penalty;
+    }
+    
     private void calculateCostToCome()
     { //Calculates cost_to_come as the length of the path so far
         
@@ -92,8 +118,11 @@ public class StateNode : IComparable<StateNode> {
         }
     }
     
-    private float calculatePenalty()
-    {   // Calculates and sets close_to_obstacle_penalty for a new StateNode
+    private float calculateObstaclePenalty()
+    {   // Calculates and sets close_to_obstacle_penalty for a new StateNode.
+        // This takes into account obstacles at new positions and to the left of new positions
+        // Being close to obstacles should be penalised, having obstacles on the left side should be penalised '
+        // (we want to keep left side free and drive on the right)
         
         // Get all colliders within the sphere
         Collider[] hit_colliders = Physics.OverlapSphere(this.world_position, 5f, LayerMask.GetMask("Obstacle"));
@@ -281,7 +310,7 @@ public class StateNode : IComparable<StateNode> {
             }
         }
         
-        var valid_movements = this.checkForObstacles(potential_movements, mapManager);
+        var valid_movements = this.checkForObstacles(potential_movements);
 
         foreach (var valid_movement in valid_movements)
         {
@@ -317,8 +346,10 @@ public class StateNode : IComparable<StateNode> {
                     prev_node_in_Q.cost_to_come = new_node.cost_to_come;
                     prev_node_in_Q.cost_to_go = new_node.cost_to_go;
                     //prev_node_in_Q.turning_penalty = new_node.turning_penalty;
-                    prev_node_in_Q.combined_cost = prev_node_in_Q.cost_to_come + prev_node_in_Q.cost_to_go +
-                                                   prev_node_in_Q.close_to_obstacle_penalty; //+ prev_node_in_Q.close_to_used_wp_penalty; // + prev_node_in_Q.turning_penalty;
+                    prev_node_in_Q.combined_cost = prev_node_in_Q.cost_to_come + 
+                                                   prev_node_in_Q.cost_to_go +
+                                                   prev_node_in_Q.close_to_obstacle_penalty + 
+                                                   prev_node_in_Q.other_goals_penalty; //+ prev_node_in_Q.close_to_used_wp_penalty; // + prev_node_in_Q.turning_penalty;
                 }
             }
             
@@ -336,7 +367,8 @@ public class StateNode : IComparable<StateNode> {
                     //prev_node_in_visited_nodes.turning_penalty = new_node.turning_penalty;
                     prev_node_in_visited_nodes.combined_cost = prev_node_in_visited_nodes.cost_to_come +
                                                                prev_node_in_visited_nodes.cost_to_go +
-                                                               prev_node_in_visited_nodes.close_to_obstacle_penalty; // + prev_node_in_visited_nodes.close_to_used_wp_penalty; // + prev_node_in_visited_nodes.turning_penalty;
+                                                               prev_node_in_visited_nodes.close_to_obstacle_penalty +
+                                                               prev_node_in_visited_nodes.other_goals_penalty; // + prev_node_in_visited_nodes.close_to_used_wp_penalty; // + prev_node_in_visited_nodes.turning_penalty;
                     Q.Enqueue(prev_node_in_visited_nodes); 
                     // Since we are adding the node back to Q, we should remove it from visited_nodes dict so that it can be added to the dict
                     // in CarAI.cs when expanding the popped node from Q. It's either this or add a check with .ContainsKey() over there 
@@ -356,12 +388,11 @@ public class StateNode : IComparable<StateNode> {
         return childnodes_list;
     }
 
-    private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements, MapManager mapManager)
+    private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements)
     {   //This method goes through every potential movement and sweeps a Sphere from this.world_pos to potential_new_pos
         //The sphere has radius 2.5f which just about covers the car, and ensures that chosen waypoints and the paths 
         //between them are free of obstacles. It also discards new positions too close to other cars' goal positions.
         List<Tuple<Vector3, float>> valid_movements = new List<Tuple<Vector3, float>>();
-        var all_goal_pos = mapManager.targetPositions;
 
         for (int i = 0; i < potential_movements.Count; i++)
         {
@@ -372,21 +403,7 @@ public class StateNode : IComparable<StateNode> {
             
             RaycastHit hit; //Compiler gets mad at me if I don't claim the hit-object
             if (Physics.SphereCast(this.world_position, 2.5f, direction, out hit, distance, 
-                    LayerMask.GetMask("Obstacle")) == false)
-            {
-                //Reaching this point means the new waypoint is free of obstacles, but is it near another car's goal?
-                for (int j = 0; j < all_goal_pos.Count; j++)
-                {
-                    if ((Vector3.Distance(potential_new_position, all_goal_pos[j]) < 7f) && all_goal_pos[j] != this.goal_world_position)
-                    {
-                        valid_movement = false; //Don't add this potential_movement to valid_movements
-                        break; //Start checking next potential_movement
-                    }
-                }
-                
-            }
-            else //SphereCast found obstacles between this.world_pos and potential_new_pos
-            { valid_movement = false; }
+                    LayerMask.GetMask("Obstacle")) == true) { valid_movement = false; }
             
             if (valid_movement == true) valid_movements.Add(potential_movements[i]);
         }
