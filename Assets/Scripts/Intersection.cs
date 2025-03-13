@@ -9,7 +9,11 @@ public class Intersection
 {
     private float minAngleToStop = 35f; // minimum angle between the orientation of two cars to stop (if their orientation is similar they don't stop because they can follow each other)
     private float translationDistance = 2f; // the distance to translate one segment of the path to left and right to check if the other path doesn't cross but is too close
-
+    private int myFrontDifferent = 4;
+    private int myFrontSimilar = 3;
+    private int otherFront = 6;
+    private int otherBackSimilar = 1;
+    private int otherBackDifferent = 2;
     /*
      * Function that returns a boolean to indicate if a car has to stop because its path crosses another car's path
      * 
@@ -26,7 +30,7 @@ public class Intersection
         List<Vector3> myPath = myCarScript.path_of_points;
         int myIndex = myCarScript.currentPathIndex;
 
-        if (myCarScript.carToFollow != null) // If I'm following another car I stop if and only if this car stops
+        /*if (myCarScript.carToFollow != null) // If I'm following another car I stop if and only if this car stops
         {
             if (myCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop)
             {
@@ -34,7 +38,7 @@ public class Intersection
             }
             
             else return false; 
-        }
+        }*/
 
         foreach (var otherCar in m_OtherCars) // Check for all the other cars if my path is going to intersect their path
         {
@@ -49,30 +53,44 @@ public class Intersection
 
             if (otherPath == null || myPath == null) continue; // Ensure paths are valid
 
-            for (int i = Mathf.Max(myIndex-2, 0); i < Mathf.Min(myIndex + 5, myPath.Count - 1); i++) // Check right behind me and the next few segments of my path
+            float angle = Vector3.Angle(myCar.transform.forward, otherCar.transform.forward); // calculate angle between the two cars
+
+            int myFront;
+            int otherBack;
+            if (angle > minAngleToStop)
             {
-                for (int j = Mathf.Max(otherIndex-2, 0); j < Mathf.Min(otherIndex + 5, otherPath.Count - 1); j++) // Check right behind the other car and the next few segments of its path
+                myFront = myFrontDifferent;
+                otherBack = otherBackDifferent;
+            }
+            else {
+                myFront = myFrontSimilar;
+                otherBack = otherBackSimilar;
+            }
+
+            for (int i = Mathf.Max(myIndex-2, 0); i < Mathf.Min(myIndex + myFront, myPath.Count - 1); i++) // Check right behind me and the next few segments of my path
+            {
+                for (int j = Mathf.Max(otherIndex-otherBack, 0); j < Mathf.Min(otherIndex + otherFront, otherPath.Count - 1); j++) // Check right behind the other car and the next few segments of its path
                 {
                     Vector3 myStart = myPath[i];
                     Vector3 otherStart = otherPath[j];
                     Vector3 myEnd = myPath[i+1];
                     Vector3 otherEnd = otherPath[j+1];
 
-                    float angle = Vector3.Angle(myCar.transform.forward, otherCar.transform.forward); // calculate angle between the two cars
+                    //float angle = Vector3.Angle(myCar.transform.forward, otherCar.transform.forward); // calculate angle between the two cars
 
                     if (SegmentsIntersect(myStart, myEnd, otherStart, otherEnd, out Vector3 intersection))
                     {
                         if (i >= myIndex) // only stop if the intersection is not behind me
                         {
                             // conditions to stop if the other car is not following a car
-                            if (otherCarScript.carToFollow == null && angle > minAngleToStop && myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop)
+                            if (otherCarScript.carToFollow == null && /*angle > minAngleToStop &&*/ myCarScript.myCarIndex > otherCarScript.myCarIndex /*&& !otherCarScript.hasToStop*/)
                             {
                                 return true;
                             }
                             // conditions to stop if the other car is following a car
-                            else if (otherCarScript.carToFollow != null && !otherCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop && angle > minAngleToStop) {
-                                return true;
-                            }
+                            /*else if (otherCarScript.carToFollow != null && !otherCarScript.carToFollow.GetComponent<AIP1TrafficCar>().hasToStop /*&& angle > minAngleToStop*///) {
+                            //    return true;
+                            //}
                         }              
                     }
                     myStart = myEnd;
@@ -141,6 +159,9 @@ public class Intersection
         Vector2 D_left = D - translation;
 
         if (CheckSegmentIntersection(A_left, B_left, C, D, out intersection))
+            return true;
+
+        if (CheckSegmentIntersection(A_left, B_right, C, D, out intersection))
             return true;
 
         return false;

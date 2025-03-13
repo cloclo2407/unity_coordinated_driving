@@ -262,13 +262,13 @@ public class AIP1TrafficCar : MonoBehaviour
 
             else
             {
-                if (carToFollow != null) // I'm following a car
+                /*if (carToFollow != null) // I'm following a car
                 {
                     target_position = carToFollow.transform.position;
                     target_position = target_position - carToFollow.transform.forward * safeFollowDistance; // Aim for behind the car
 
                     if (currentPathIndex != path_of_points.Count - 1) distToPoint = 4f; // Can validate point from further if you're following a car
-                }
+                }*/
 
                 /*else if (orca_velocity != Vector3.zero)
                 {
@@ -306,7 +306,7 @@ public class AIP1TrafficCar : MonoBehaviour
             {
                 currentPathIndex++;          
 
-                if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 1; } //Changing distToPoint to be smaller when next waypoint is the goal
+                if (currentPathIndex == path_of_points.Count - 1) {distToPoint = 2; } //Changing distToPoint to be smaller when next waypoint is the goal
 
                 // Can set a bigger distance to help the beginning
                 else if (currentPathIndex < 4)
