@@ -146,7 +146,7 @@ public class AIP1TrafficCar : MonoBehaviour
         PriorityQueue Q = new PriorityQueue();
         StateNode.crazyCarIndex = crazyCarIndex; //for debugging
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
-        StateNode start_node = new StateNode(start_pos_global, resultAngle, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
+        StateNode start_node = new StateNode(start_pos_global, resultAngle, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
         Q.Enqueue(start_node);
 
         while (Q.Count != 0)
@@ -166,7 +166,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
 
             //else we keep looking:
-            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, goal_pos_global, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
+            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
             foreach (StateNode n in new_nodes)
             {
                 Q.Enqueue(n);
