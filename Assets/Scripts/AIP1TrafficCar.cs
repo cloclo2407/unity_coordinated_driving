@@ -23,7 +23,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
     //It is used to give an index to the specific car clone that has this script attached.
     public int myCarIndex; //This car's specific index in array of agents m_OtherCars (includes this car!)
-    private int crazyCarIndex = 1; //For debugging when a specific car is acting crazy
+    private int crazyCarIndex = 10; //For debugging when a specific car is acting crazy
     private float waiting_multiplier = 0f;
     private bool start_moving = false;
     public bool goal_reached = false;
@@ -128,21 +128,24 @@ public class AIP1TrafficCar : MonoBehaviour
         // Get the current Y rotation angle (in degrees)
         float currentAngle = m_Car.transform.rotation.eulerAngles.y;
 
-        // Find the closest multiple of 45 degrees
-        float closestMultipleOf45 = Mathf.Round(currentAngle / 45f) * 45f;
+        // Find the closest multiple of 30 degrees
+        float closestMultipleOf30 = Mathf.Round(currentAngle / 30f) * 30f;
 
         // Ensure the angle is within 0 to 360 degrees
-        float resultAngle = closestMultipleOf45 % 360f;
+        float resultAngle = closestMultipleOf30 % 360f;
 
         // If the result is negative, ensure it's within the positive range (0 to 360)
         if (resultAngle < 0)
         {
             resultAngle += 360f;
         }
+        
+        if (crazyCarIndex == myCarIndex) Debug.Log("currentAngle: "+currentAngle+", closestMultOf30: "+closestMultipleOf30+", resultAngle: "+resultAngle);
 
         PriorityQueue Q = new PriorityQueue();
+        StateNode.crazyCarIndex = crazyCarIndex; //for debugging
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
-        StateNode start_node = new StateNode(start_pos_global, resultAngle, goal_pos_global, null, m_MapManager, m_ObstacleMap);
+        StateNode start_node = new StateNode(start_pos_global, resultAngle, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
         Q.Enqueue(start_node);
 
         while (Q.Count != 0)
@@ -178,6 +181,7 @@ public class AIP1TrafficCar : MonoBehaviour
         // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
         for (int i = 0; i < path_of_points.Count - 1; i++) {
             // Debug.drawline draws a line between a start point and end point IN GLOBAL COORDS!
+            //if (crazyCarIndex == myCarIndex) Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f);
             Debug.DrawLine(path_of_points[i] + Vector3.up, path_of_points[i + 1] + Vector3.up, Color.magenta, 1000f);
         }   
 
