@@ -100,6 +100,7 @@ public class AIP1TrafficCar : MonoBehaviour
         Vector3 cell_scale = Vector3.one * cell_size;
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), cell_scale);
         m_ObstacleMap.margin = Vector3.one * 2f; // (Changing cell margins, do they work?)
+        StateNode.cell_size = cell_size;
 
         var gameManagerA2 = FindFirstObjectByType<GameManagerA2>();
         m_CurrentGoals = gameManagerA2.GetGoals(this.gameObject); // This car's goal.
@@ -436,12 +437,12 @@ public class AIP1TrafficCar : MonoBehaviour
     }
 
     // Function to round starting coordinates to the center of the cell
-    Vector3 SnapToGridCenter(Vector3 position, float cell_scale)
+    Vector3 SnapToGridCenter(Vector3 position, float cell_size)
     {
         return new Vector3(
-            Mathf.Round(position.x / cell_scale) * cell_scale + cell_scale / 2f,
+            Mathf.Round(position.x / cell_size) * cell_size + cell_size / 2f,
             position.y, // Keep the original Y value
-            Mathf.Round(position.z / cell_scale) * cell_scale + cell_scale / 2f
+            Mathf.Round(position.z / cell_size) * cell_size + cell_size / 2f
         );
     }
 
