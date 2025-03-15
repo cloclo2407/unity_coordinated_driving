@@ -217,17 +217,13 @@ public class StateNode : IComparable<StateNode> {
         // therefore have a distance of cellength.
         
         if (vehicle == "car")
-        {
-            if (crazyCarIndex == myCarIndex) Debug.Log("this.orientation: "+this.orientation);
-            if (crazyCarIndex == myCarIndex) Debug.Log("cost_to_come: "+this.cost_to_come);
-            
+        {            
             if (cost_to_come < smooth_start_distance) //Checking if limit of how far we've used 30-degree turns is reached
             {
                 //float closest_multiple_of_30 = Mathf.Round(this.orientation / 30f) * 30f; //Finds closest multiple of 30 degrees to this.orientation
                 //if (crazyCarIndex == myCarIndex) Debug.Log("closest_mult_30: "+closest_multiple_of_30);
                 //float remainder = ((closest_multiple_of_30 % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
                 float remainder = ((this.orientation % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
-                if (crazyCarIndex == myCarIndex) Debug.Log("remainder: "+remainder);
                 //if (crazyCarIndex == myCarIndex) Debug.Log("-1f*Mathf.Atan(0.5f): "+(Mathf.Rad2Deg*(-1f*Mathf.Atan(0.5f))));
                 //if (crazyCarIndex == myCarIndex) Debug.Log("2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))): "+ (Mathf.Rad2Deg*(2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))))));
             

@@ -141,7 +141,6 @@ public class AIP1TrafficCar : MonoBehaviour
             resultAngle += 360f;
         }
         
-        if (crazyCarIndex == myCarIndex) Debug.Log("currentAngle: "+currentAngle+", closestMultOf30: "+closestMultipleOf30+", resultAngle: "+resultAngle);
 
         PriorityQueue Q = new PriorityQueue();
         StateNode.crazyCarIndex = crazyCarIndex; //for debugging
@@ -324,7 +323,7 @@ public class AIP1TrafficCar : MonoBehaviour
             }
 
             // If you're barely moving it means you may be stuckstuck
-            if (my_rigidbody.linearVelocity.magnitude < 0.1f)
+            if (my_rigidbody.linearVelocity.magnitude < 0.5f)
             {
                 timeStuck += 1;
                 if (timeStuck > 100) // If you're not moving for too long you're stuck

@@ -14,7 +14,7 @@ public class Intersection
     private int otherFront = 6;
     private int otherBackSimilar = 1;
     private int otherBackDifferent = 2;
-    private float similarDirectionThreshold = 20f;
+    private float similarDirectionThreshold = 38f;
     /*
      * Function that returns a boolean to indicate if a car has to stop because its path crosses another car's path
      * 
@@ -70,31 +70,32 @@ public class Intersection
 
                         if (SegmentsIntersect(myStart, myEnd, otherStart, otherEnd, out Vector3 intersection))
                         {
-                        if (i >= myIndex) // only stop if the intersection is not behind me
-                        {
-                            // Check if cars are moving in a similar direction
-                            if (angle < similarDirectionThreshold)
+                            float myDistance = Vector3.Distance(myPosition, intersection);
+                            float otherDistance = Vector3.Distance(otherPosition, intersection);
+
+                            if (i >= myIndex && Mathf.Abs(myDistance - otherDistance) < 6f) // only stop if the intersection is not behind me
                             {
-
-                                Vector3 deltaPosition = otherPosition - myPosition;
-                                float behind = Vector3.Dot(deltaPosition.normalized, myCar.transform.forward);
-
-
-                                if (behind > 0f) // If my car is behind
+                                // Check if cars are moving in a similar direction
+                                if (angle < similarDirectionThreshold)
                                 {
-                                    return true;
+
+                                    Vector3 deltaPosition = otherPosition - myPosition;
+                                    float behind = Vector3.Dot(deltaPosition.normalized, myCar.transform.forward);
+
+
+                                    if (behind > 0f && !otherCarScript.hasToStop) // If my car is behind
+                                    {
+                                        return true;
+                                    }
                                 }
-                            }
                            
-                            else
-                            {
-                                float myDistance = Vector3.Distance(myPosition, intersection);
-                                float otherDistance = Vector3.Dot(otherPosition - intersection, otherCar.transform.forward);
-                                if (myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop && myDistance > 3f)
+                                else
                                 {
-                                    return true;
+                                    if (myCarScript.myCarIndex > otherCarScript.myCarIndex && !otherCarScript.hasToStop && myDistance > 5f)
+                                    {
+                                        return true;
+                                    }
                                 }
-                            }
                          
                             }    
                         }
