@@ -7,11 +7,12 @@ using Scripts.Map;
 using UnityEditor;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
+using static AIP1TrafficCar; //Allows us to access static fields of AIP1TrafficCar
+using static AIP2TrafficDrone;
 
 public class StateNode : IComparable<StateNode> { 
     //Inherits from IComparable<StateNode> in order to be able to compare two StateNodes, see CompareTo() method below.
     //StateNode-objects are used to keep track of states/ nodes/ positions we visit while constructing a path
-    public static int crazyCarIndex;
     public int myCarIndex;
     public static float cell_size;
     public Vector3 start_pos_global;
@@ -28,7 +29,7 @@ public class StateNode : IComparable<StateNode> {
     public float combined_cost;             //away from walls
     // Implementing a hashset (dictionary with only keys) for keeping track of all visited nodes by all runs of A* for all cars
     // This is intended to make A* choose less overlapping paths for different cars, used as reason for added cost (penalty).
-    public static HashSet<Vector3Int> used_waypoints = new HashSet<Vector3Int>();
+    //public static HashSet<Vector3Int> used_waypoints = new HashSet<Vector3Int>();
     //public float close_to_used_wp_penalty; //add penalty for being close to used waypoint in other run of A*
     public float smooth_start_distance = 30f; //How far we let A* use smoother 30-degree turns in the start of a path
 
@@ -218,18 +219,18 @@ public class StateNode : IComparable<StateNode> {
         
         if (vehicle == "car")
         {
-            if (crazyCarIndex == myCarIndex) Debug.Log("this.orientation: "+this.orientation);
-            if (crazyCarIndex == myCarIndex) Debug.Log("cost_to_come: "+this.cost_to_come);
+            if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("this.orientation: "+this.orientation);
+            if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("cost_to_come: "+this.cost_to_come);
             
             if (cost_to_come < smooth_start_distance) //Checking if limit of how far we've used 30-degree turns is reached
             {
                 //float closest_multiple_of_30 = Mathf.Round(this.orientation / 30f) * 30f; //Finds closest multiple of 30 degrees to this.orientation
-                //if (crazyCarIndex == myCarIndex) Debug.Log("closest_mult_30: "+closest_multiple_of_30);
+                //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("closest_mult_30: "+closest_multiple_of_30);
                 //float remainder = ((closest_multiple_of_30 % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
                 float remainder = ((this.orientation % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
-                if (crazyCarIndex == myCarIndex) Debug.Log("remainder: "+remainder);
-                //if (crazyCarIndex == myCarIndex) Debug.Log("-1f*Mathf.Atan(0.5f): "+(Mathf.Rad2Deg*(-1f*Mathf.Atan(0.5f))));
-                //if (crazyCarIndex == myCarIndex) Debug.Log("2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))): "+ (Mathf.Rad2Deg*(2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))))));
+                if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("remainder: "+remainder);
+                //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("-1f*Mathf.Atan(0.5f): "+(Mathf.Rad2Deg*(-1f*Mathf.Atan(0.5f))));
+                //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))): "+ (Mathf.Rad2Deg*(2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))))));
             
                 if (remainder == 0)
                 {   // Reset orientation to multiple of 90 degrees when its closest multiple of 30 is a multiple of 90:
@@ -489,7 +490,10 @@ public class StateNode : IComparable<StateNode> {
             }
         }
 
-        var valid_movements = this.checkForObstacles(potential_movements);
+        //Make sure new nodes are not in same pos and opposite direction of other cars' paths:
+        //var non_conflicting_movements = checkForConflictingPaths(potential_movements, vehicle);
+        //Make sure new nodes give an obstacle free path:
+        var valid_movements = checkForObstacles(potential_movements);
 
         foreach (var valid_movement in valid_movements)
         {
@@ -498,7 +502,7 @@ public class StateNode : IComparable<StateNode> {
             StateNode new_node = new StateNode(new_position, new_orientation, this.start_pos_global, this.goal_pos_global, this, mapManager, obstacleMap, myCarIndex);
             
             //I want to draw out all positions we visit to get a feel of how A* explores the space:
-            //if (crazyCarIndex == myCarIndex) Debug.DrawLine(this.world_position+Vector3.up*0.1f, new_position+Vector3.up*0.1f, Color.green, 1000f);
+            //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.DrawLine(this.world_position+Vector3.up*0.1f, new_position+Vector3.up*0.1f, Color.green, 1000f);
             
             //Have we seen this potential node/ cell before? Let's check Q first and then visited_nodes. Maybe should rewire path for a shorter one!
             StateNode prev_node_in_Q = null;
@@ -567,6 +571,27 @@ public class StateNode : IComparable<StateNode> {
         return childnodes_list;
     }
 
+    /*private static List<Tuple<Vector3, float>> checkForConflictingPaths(List<Tuple<Vector3, float>> potential_movements, String vehicle)
+    {
+        List<Tuple<Vector3, float>> non_conflicting_movements = new List<Tuple<Vector3, float>>();
+        Dictionary<Vector3, HashSet<float>> global_path_registry;
+        
+        if (vehicle == "car") { global_path_registry = AIP1TrafficCar.globalPathRegistry; }
+        //else if (vehicle == "drone") { var global_path_registry = AIP2TrafficDrone.globalPathRegistry; }
+        
+        for (int i = 0; i < potential_movements.Count; i++)
+        {
+            bool non_conflicting_movement = true;
+            var potential_new_position = world_position + potential_movements[i].Item1; //Access first element in tuple by calling .Item1
+
+        }
+            
+            if (valid_movement == true) valid_movements.Add(potential_movements[i]);
+        
+        
+        return non_conflicting_movements;
+    }*/
+
     private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements)
     {   //This method goes through every potential movement and sweeps a Sphere from this.world_pos to potential_new_pos
         //The sphere has radius 2.5f which just about covers the car, and ensures that chosen waypoints and the paths 
@@ -602,7 +627,7 @@ public class StateNode : IComparable<StateNode> {
     
     public void fillPaths(List<StateNode> path_of_nodes, List<Vector3> path_of_points) 
 
-    {// Returns path containing this node and all of its parents        
+    {// Takes path and fills it with this node and all of its parents        
         path_of_nodes.Add(this);
         path_of_points.Add(this.world_position);
         
