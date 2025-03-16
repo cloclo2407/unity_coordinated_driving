@@ -66,13 +66,17 @@ public class AIP1TrafficCar : MonoBehaviour
     public CarController carToFollow = null; // contains the car you are following
 
     //For driving:
-    private float waypoint_margin = 3.8f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
+    private float goalpoint_margin = 3.8f; //Serves as a means of checking if we're close enough to goal while planning path
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 6f; // Minimum distance to keep behind the car we're following
     public float distToPoint = 4f; // min distance to go to the next point in path
     public bool hasToStop; // for intersection
-
+    private bool carCloseInFront; //for when another car is close in front to this car, then we should stop and allow the car in front to move away
+    private int timeStoppedForFrontCar = 0;
+    private bool disableFrontCheck = false;
+    private int timeFrontCheckDisabled = 0;
+    
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
 
@@ -158,7 +162,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 visited_nodes.Add(current_node.cell_position, current_node);
             }
 
-            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.waypoint_margin) //We have reached the goal, time to create the path
+            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.goalpoint_margin) //We have reached the goal, time to create the path
             {
                 current_node.fillPaths(this.path_of_nodes, this.path_of_points);
                 //Now the path_of_nodes and path_of_points are ready to be executed. We can either use StateNodes or Vector3s in the controller.
@@ -248,9 +252,19 @@ public class AIP1TrafficCar : MonoBehaviour
 
         Debug.DrawLine(transform.position + Vector3.up * 2f, target_position + Vector3.up * 2f, Color.red);  // Shows where we're aiming to follow
 
-        if (hasToStop)
+        if (carCloseInFront)
+        {
+            Handles.color = Color.red; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+            Handles.DrawWireDisc(transform.position, Vector3.up, 4f); // draw a blue circle around a car that is stopping for intersection
+        }
+        else if (hasToStop)
         {
             Handles.color = Color.blue; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
+            Handles.DrawWireDisc(transform.position, Vector3.up, 4f); // draw a blue circle around a car that is stopping for intersection
+        }
+        else if (goal_reached)
+        {
+            Handles.color = Color.green; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
             Handles.DrawWireDisc(transform.position, Vector3.up, 4f); // draw a blue circle around a car that is stopping for intersection
         }
 
@@ -259,9 +273,17 @@ public class AIP1TrafficCar : MonoBehaviour
     //Follow waypoints and do collision recovery
     private void DriveAndRecover(Vector3 orca_velocity) 
     { 
-        //Detect obstacles
+        //Detect obstacles and close cars in front
         UpdateRaycast();
 
+        if (carCloseInFront == true) //Make the car stop for car in front to have a chance to drive away without collision
+        { //Keep driving only if the raycast in front returns false.
+            StopTheCar(); 
+            timeStoppedForFrontCar += 1;
+            if (timeStoppedForFrontCar >= 500) disableFrontCheck = true; //If we've been waiting for more than 10 seconds, disable front checks so we can do collision recovery
+            return;
+        }
+        
         // Update target and old target to the current index in the path
         if (target_position != path_of_points[currentPathIndex]) 
         {
@@ -274,7 +296,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         if (!isStuck) // If the car is not stuck
         {
-            m_Formation.LineFormation(m_Car, m_OtherCars, target_position); // Check for car to follow
+            //m_Formation.LineFormation(m_Car, m_OtherCars, target_position); // Check for car to follow
 
             if (hasToStop) // If I have to stop for intersection, brake
             {
@@ -447,12 +469,32 @@ public class AIP1TrafficCar : MonoBehaviour
         obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
 
         // Draw Raycasts in Blue
-        /* Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
+        /*Debug.DrawRay(transform.position, directionRight * maxRangeClose, Color.blue);
         Debug.DrawRay(transform.position, directionLeft * maxRangeClose, Color.blue);
         Debug.DrawRay(transform.position, directionBackRight * maxRangeClose, Color.blue);
         Debug.DrawRay(transform.position, directionBackLeft * maxRangeClose, Color.blue);
         Debug.DrawRay(transform.position, directionBack * maxRangeClose, Color.blue);
-        Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue); */
+        Debug.DrawRay(transform.position, transform.forward * maxRangeClose, Color.blue);*/
+        
+        //Check for AGENTS close in front
+        if (!disableFrontCheck)
+        {
+            carCloseInFront = Physics.Raycast(transform.position+Vector3.up, transform.forward, 10f, LayerMask.GetMask("Default"));
+            Debug.DrawRay(transform.position+Vector3.up, transform.forward*10f, Color.black);
+        }
+        else
+        {
+            carCloseInFront = false;
+            timeStoppedForFrontCar = 0;
+            
+            timeFrontCheckDisabled += 1;
+            if (timeFrontCheckDisabled > 100) //If front check has been disabled for longer than 2 seconds, re-enable it
+            {
+                disableFrontCheck = false;
+                timeFrontCheckDisabled = 0;
+            }
+            
+        }
     }
 
     // Function to round starting coordinates to the center of the cell
@@ -470,7 +512,7 @@ public class AIP1TrafficCar : MonoBehaviour
         //The handbrake bug causes the car to have trouble resetting the handbrake to 0 after using the handbrake
         //This makes the car unable to start accelerating again even after setting handbrake=0f, accel>0.
         
-        if (myCarIndex == crazyCarIndex) Debug.Log("Stopping crazy car "+crazyCarIndex+" with velocity magnitude: "+my_rigidbody.linearVelocity.magnitude);
+        //if (myCarIndex == crazyCarIndex) Debug.Log("Stopping crazy car "+crazyCarIndex+" with velocity magnitude: "+my_rigidbody.linearVelocity.magnitude);
         
         if (my_rigidbody.linearVelocity.magnitude > 0.005f)
         {
