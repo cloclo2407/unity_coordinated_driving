@@ -66,7 +66,7 @@ public class AIP1TrafficCar : MonoBehaviour
     public CarController carToFollow = null; // contains the car you are following
 
     //For driving:
-    private float waypoint_margin = 4f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
+    private float waypoint_margin = 3.8f; //Math.Clamp(my_rigidbody.linearVelocity.magnitude, 5f, 15f); //6.5f; //Serves as a means of checking if we're close enough to goal/ next waypoint
     private float speed_limit = 3.5f;
     private float max_scan_distance = 7.5f; // Testing a variable scan distance
     float safeFollowDistance = 6f; // Minimum distance to keep behind the car we're following
@@ -158,8 +158,7 @@ public class AIP1TrafficCar : MonoBehaviour
                 visited_nodes.Add(current_node.cell_position, current_node);
             }
 
-            if (Vector3.Distance(current_node.world_position, goal_pos_global) <=
-                this.waypoint_margin) //We have reached the goal, time to create the path
+            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.waypoint_margin) //We have reached the goal, time to create the path
             {
                 current_node.fillPaths(this.path_of_nodes, this.path_of_points);
                 //Now the path_of_nodes and path_of_points are ready to be executed. We can either use StateNodes or Vector3s in the controller.
@@ -312,7 +311,7 @@ public class AIP1TrafficCar : MonoBehaviour
                     else if (obsBackRightClose) steering -= obstacle_avoiding_steering;
                 }
                 
-                /* Formation is no longer used
+                /* Formation is no longer used. This block of code was causing needless stopping for some reason even though we no longer use formation
                 // Brake if I'm too close to the car I follow, help inserting to keep a distance between cars
                 if (carToFollow != null && Vector3.Distance(transform.position, carToFollow.transform.position) < safeFollowDistance) 
                 {
