@@ -26,7 +26,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
     //It is used to give an index to the specific car clone that has this script attached.
     public int myCarIndex; //This car's specific index in array of agents m_OtherCars (includes this car!)
-    public static int crazyCarIndex = 10; //For debugging when a specific car is acting crazy
+    public static int crazyCarIndex = 11; //For debugging when a specific car is acting crazy
     private float waiting_multiplier = 0f;
     private bool start_moving = false;
     public bool goal_reached = false;
@@ -227,10 +227,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (goal_reached == true) //Make the car stop after reaching goal.
-        {
-            if (my_rigidbody.linearVelocity.magnitude > 0.005f) m_Car.Move(0f, 0f, 0f, 100f);
-        }
+        if (goal_reached == true) StopTheCar(); //Make the car stop after reaching goal.
         
         else if (start_moving == true && path_of_points.Count != 0 && currentPathIndex < path_of_points.Count)
         {
@@ -280,9 +277,9 @@ public class AIP1TrafficCar : MonoBehaviour
         {
             m_Formation.LineFormation(m_Car, m_OtherCars, target_position); // Check for car to follow
 
-            if (hasToStop) // If I have to stop for intersection, break
+            if (hasToStop) // If I have to stop for intersection, brake
             {
-                m_Car.Move(0f, 0f, 100f, 1000f);
+                StopTheCar();
             }
 
             else
@@ -315,15 +312,18 @@ public class AIP1TrafficCar : MonoBehaviour
                     else if (obsBackRightClose) steering -= obstacle_avoiding_steering;
                 }
                 
-                // Break if I'm too close to the car I follow, help inserting to keep a distance between cars
+                /* Formation is no longer used
+                // Brake if I'm too close to the car I follow, help inserting to keep a distance between cars
                 if (carToFollow != null && Vector3.Distance(transform.position, carToFollow.transform.position) < safeFollowDistance) 
                 {
-                    m_Car.Move(0f, 0f, 100f, 100f);
+                    StopTheCar();
                     timeStuck = 0;
                 }
 
                 //Drive
-                else m_Car.Move(steering, acceleration, acceleration, 0f);              
+                else m_Car.Move(steering, acceleration, acceleration, 0f);    
+                */    
+                m_Car.Move(steering, acceleration, acceleration, 0f);
             }
 
             // Update currentPathIndex
@@ -370,7 +370,7 @@ public class AIP1TrafficCar : MonoBehaviour
             {
                 timeStuck = 0;
                 isStuck = false;
-                m_Car.Move(0f, 0f, 100f, 1000f);
+                StopTheCar();
             }
         }
     }
@@ -457,13 +457,40 @@ public class AIP1TrafficCar : MonoBehaviour
     }
 
     // Function to round starting coordinates to the center of the cell
-    Vector3 SnapToGridCenter(Vector3 position, float cell_size)
+    private Vector3 SnapToGridCenter(Vector3 position, float cell_size)
     {
         return new Vector3(
             Mathf.Round(position.x / cell_size) * cell_size + cell_size / 2f,
             position.y, // Keep the original Y value
             Mathf.Round(position.z / cell_size) * cell_size + cell_size / 2f
         );
+    }
+
+    private void StopTheCar()
+    {   //Method that stops the car without using the handbrake in order to avoid the handbrake bug
+        //The handbrake bug causes the car to have trouble resetting the handbrake to 0 after using the handbrake
+        //This makes the car unable to start accelerating again even after setting handbrake=0f, accel>0.
+        
+        if (myCarIndex == crazyCarIndex) Debug.Log("Stopping crazy car "+crazyCarIndex+" with velocity magnitude: "+my_rigidbody.linearVelocity.magnitude);
+        
+        if (my_rigidbody.linearVelocity.magnitude > 0.005f)
+        {
+            if (Vector3.Dot(my_rigidbody.transform.forward, my_rigidbody.linearVelocity) < 0)
+            { //If the dot product is negative, the vectors point in opposite directions and that means
+              //linearVelocity is pointing backwards, therefore we should accelerate forwards
+                m_Car.Move(0f, 1f, 0f, 0f);
+            }
+            else
+            { //If the dot product is positive, the vectors point in the same direction and that means
+              //linearVelocity is pointing forwards, therefore we should accelerate backwards
+                m_Car.Move(0f, 0f, -1f, 0f);
+            }
+        }
+        else
+        { //If the velocity magnitude is less than 0.005f, we consider the car stopped
+            m_Car.Move(0f,0f,0f,0f);
+        }
+        
     }
 
 }
