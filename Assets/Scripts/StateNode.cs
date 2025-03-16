@@ -7,11 +7,12 @@ using Scripts.Map;
 using UnityEditor;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
+using static AIP1TrafficCar; //Allows us to access static fields of AIP1TrafficCar
+using static AIP2TrafficDrone;
 
 public class StateNode : IComparable<StateNode> { 
     //Inherits from IComparable<StateNode> in order to be able to compare two StateNodes, see CompareTo() method below.
     //StateNode-objects are used to keep track of states/ nodes/ positions we visit while constructing a path
-    public static int crazyCarIndex;
     public int myCarIndex;
     public static float cell_size;
     public Vector3 start_pos_global;
@@ -28,7 +29,7 @@ public class StateNode : IComparable<StateNode> {
     public float combined_cost;             //away from walls
     // Implementing a hashset (dictionary with only keys) for keeping track of all visited nodes by all runs of A* for all cars
     // This is intended to make A* choose less overlapping paths for different cars, used as reason for added cost (penalty).
-    public static HashSet<Vector3Int> used_waypoints = new HashSet<Vector3Int>();
+    //public static HashSet<Vector3Int> used_waypoints = new HashSet<Vector3Int>();
     //public float close_to_used_wp_penalty; //add penalty for being close to used waypoint in other run of A*
     public float smooth_start_distance = 30f; //How far we let A* use smoother 30-degree turns in the start of a path
 
@@ -203,8 +204,8 @@ public class StateNode : IComparable<StateNode> {
         
         // For the car I'm allowing the path to move forward (north), left or right diagonally a.k.a northwest and northeast.
         // For the drone I'm allowing straight movements forward, backward, left, right (north, south, west, east) as well as
-        // northwest, northeast, southwest, southeast. Each movement is here defined by a tuple of movement to a
-        // new position via a heading (Vector3, unnormalized) and which new orientation to adopt at that position (float).
+        // northwest, northeast, southwest, southeast. Each movement is here defined by a new global position (Vector3,
+        // unnormalized) and which new orientation to adopt at that position (float).
         // Note about the orientation: it's a float specifying rotation around the y-axis.
         List<Tuple<Vector3, float>> potential_movements = new List<Tuple<Vector3, float>>();
 
@@ -217,15 +218,19 @@ public class StateNode : IComparable<StateNode> {
         // therefore have a distance of cellength.
         
         if (vehicle == "car")
-        {            
+        {
+            if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("this.orientation: "+this.orientation);
+            if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("cost_to_come: "+this.cost_to_come);
+            
             if (cost_to_come < smooth_start_distance) //Checking if limit of how far we've used 30-degree turns is reached
             {
                 //float closest_multiple_of_30 = Mathf.Round(this.orientation / 30f) * 30f; //Finds closest multiple of 30 degrees to this.orientation
-                //if (crazyCarIndex == myCarIndex) Debug.Log("closest_mult_30: "+closest_multiple_of_30);
+                //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("closest_mult_30: "+closest_multiple_of_30);
                 //float remainder = ((closest_multiple_of_30 % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
                 float remainder = ((this.orientation % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
-                //if (crazyCarIndex == myCarIndex) Debug.Log("-1f*Mathf.Atan(0.5f): "+(Mathf.Rad2Deg*(-1f*Mathf.Atan(0.5f))));
-                //if (crazyCarIndex == myCarIndex) Debug.Log("2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))): "+ (Mathf.Rad2Deg*(2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))))));
+                if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("remainder: "+remainder);
+                //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("-1f*Mathf.Atan(0.5f): "+(Mathf.Rad2Deg*(-1f*Mathf.Atan(0.5f))));
+                //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))): "+ (Mathf.Rad2Deg*(2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))))));
             
                 if (remainder == 0)
                 {   // Reset orientation to multiple of 90 degrees when its closest multiple of 30 is a multiple of 90:
@@ -236,20 +241,20 @@ public class StateNode : IComparable<StateNode> {
                 
                     // move straight north by 2f*cellength:
                     Tuple<Vector3, float> north =
-                    new Tuple<Vector3, float>((Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * 2f*cellength, 
-                        this.orientation);
+                    new Tuple<Vector3, float>((Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * 2f*cellength
+                        + this.world_position, this.orientation);
                 
                     // move northwest diagonally by sqrt(cellength^2 + (2*cellength)^2) = sqrt(5*cellength^2) = sqrt(5)*cellength:
                     float nw_turning_angle = Mathf.Rad2Deg * (-1f*Mathf.Atan(0.5f));
                     Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation + nw_turning_angle, 0) * Vector3.forward) * (Mathf.Sqrt(5f)*cellength),
-                    this.orientation - car_average_turning_angle);
+                    (Quaternion.Euler(0, this.orientation + nw_turning_angle, 0) * Vector3.forward) * (Mathf.Sqrt(5f)*cellength)
+                    + this.world_position, this.orientation - car_average_turning_angle);
                 
                     // move northeast diagonally by sqrt(5)*cellength:
                     float ne_turning_angle = Mathf.Rad2Deg * (Mathf.Atan(0.5f));
                     Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation + ne_turning_angle, 0) * Vector3.forward) * (Mathf.Sqrt(5f)*cellength),
-                    this.orientation + car_average_turning_angle);
+                    (Quaternion.Euler(0, this.orientation + ne_turning_angle, 0) * Vector3.forward) * (Mathf.Sqrt(5f)*cellength)
+                    + this.world_position, this.orientation + car_average_turning_angle);
                 
                     potential_movements.Add(north);
                     potential_movements.Add(north_west);
@@ -261,19 +266,19 @@ public class StateNode : IComparable<StateNode> {
                     // move north diagonally by sqrt(cellength^2 + (2*cellength)^2) = sqrt(5*cellength^2) = sqrt(5)*cellength:
                     Tuple<Vector3, float> north = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * (Mathf.Sqrt(5f)*cellength)
-                        ,this.orientation);
+                    + this.world_position, this.orientation);
                 
                     // move straight northwest by 2f*cellength:
                     float nw_turning_angle = Mathf.Rad2Deg * (-1f*Mathf.Atan(0.5f));
                     Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + nw_turning_angle, 0) * Vector3.forward) * 2f*cellength
-                    ,this.orientation - car_average_turning_angle);
+                    + this.world_position, this.orientation - car_average_turning_angle);
                 
                     // move northeast diagonally by sqrt(5)*cellength:
                     float ne_turning_angle = Mathf.Rad2Deg * (2f * Mathf.Asin( Mathf.Sqrt(2f)/ (2f*Mathf.Sqrt(5f)) ));
                     Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation + ne_turning_angle, 0) * Vector3.forward) * (Mathf.Sqrt(5f)*cellength),
-                    this.orientation + car_average_turning_angle);
+                    (Quaternion.Euler(0, this.orientation + ne_turning_angle, 0) * Vector3.forward) * (Mathf.Sqrt(5f)*cellength)
+                    + this.world_position, this.orientation + car_average_turning_angle);
                 
                     potential_movements.Add(north);
                     potential_movements.Add(north_west);
@@ -286,20 +291,20 @@ public class StateNode : IComparable<StateNode> {
                     // move north diagonally by sqrt(cellength^2 + (2*cellength)^2) = sqrt(5*cellength^2) = sqrt(5)*cellength:
                     Tuple<Vector3, float> north = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * (Mathf.Sqrt(5f) * cellength)
-                    , this.orientation);
+                    + this.world_position, this.orientation);
 
                     // move northwest diagonally by sqrt(5)*cellength:
                     float nw_turning_angle = Mathf.Rad2Deg * (-2f * Mathf.Asin(Mathf.Sqrt(2f) / (2f * Mathf.Sqrt(5f))));
                     Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + nw_turning_angle, 0) * Vector3.forward) *
                     (Mathf.Sqrt(5f) * cellength)
-                    , this.orientation - car_average_turning_angle);
+                    + this.world_position, this.orientation - car_average_turning_angle);
 
                     // move straight northeast by 2f*cellength:
                     float ne_turning_angle = Mathf.Rad2Deg * (1f * Mathf.Atan(0.5f));
                     Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation + ne_turning_angle, 0) * Vector3.forward) * 2f * cellength,
-                    this.orientation + car_average_turning_angle);
+                    (Quaternion.Euler(0, this.orientation + ne_turning_angle, 0) * Vector3.forward) * 2f * cellength
+                    + this.world_position, this.orientation + car_average_turning_angle);
 
                     potential_movements.Add(north);
                     potential_movements.Add(north_west);
@@ -325,17 +330,17 @@ public class StateNode : IComparable<StateNode> {
 
                     // move north by cellength:
                     Tuple<Vector3, float> north =
-                    new Tuple<Vector3, float>((Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * cellength,
-                        this.orientation);
+                    new Tuple<Vector3, float>((Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * cellength
+                                              + this.world_position, this.orientation);
                     // move northwest diagonally by sqrt(2*cellength^2):
                     Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                     this.orientation - drone_turning_angle);
                     // move northeast diagonally by sqrt(2*cellength^2):
                     Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                     this.orientation + drone_turning_angle);
 
                     potential_movements.Add(north);
@@ -351,16 +356,16 @@ public class StateNode : IComparable<StateNode> {
                     // move north by sqrt(2*cellength^2):
                     Tuple<Vector3, float> north = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                     this.orientation);
                     // move northwest by cellength:
                     Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) * cellength,
-                    this.orientation - drone_turning_angle);
+                    (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) * cellength
+                    + this.world_position, this.orientation - drone_turning_angle);
                     // move northeast by cellength:
                     Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) * cellength,
-                    this.orientation + drone_turning_angle);
+                    (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) * cellength
+                    + this.world_position, this.orientation + drone_turning_angle);
                     
                     potential_movements.Add(north); 
                     potential_movements.Add(north_west);
@@ -378,46 +383,43 @@ public class StateNode : IComparable<StateNode> {
 
                 // move north by cellength:
                 Tuple<Vector3, float> north =
-                    new Tuple<Vector3, float>((Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * cellength,
-                        this.orientation);
+                    new Tuple<Vector3, float>((Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * cellength
+                                              + this.world_position, this.orientation);
                 // move northwest diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
-                    this.orientation - drone_turning_angle);
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d))))
+                    + this.world_position, this.orientation - drone_turning_angle);
                 // move northeast diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                     this.orientation + drone_turning_angle);
                 // move south by cellength
                 Tuple<Vector3, float> south =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 4 * drone_turning_angle, 0) * Vector3.forward) *
-                        cellength,
-                        this.orientation + 4 * drone_turning_angle);
+                        cellength + this.world_position, this.orientation + 4 * drone_turning_angle);
                 // move southwest diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> south_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation - 3 * drone_turning_angle, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                     this.orientation - 3 * drone_turning_angle);
                 // move southeast diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> south_east = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + 3 * drone_turning_angle, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                     this.orientation + 3 * drone_turning_angle);
                 // move west by cellength
                 Tuple<Vector3, float> west =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation - 2 * drone_turning_angle, 0) * Vector3.forward) *
-                        cellength,
-                        this.orientation - 2 * drone_turning_angle);
+                        cellength + this.world_position, this.orientation - 2 * drone_turning_angle);
                 // move east by cellength
                 Tuple<Vector3, float> east =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 2 * drone_turning_angle, 0) * Vector3.forward) *
-                        cellength,
-                        this.orientation + 2 * drone_turning_angle);
+                        cellength + this.world_position, this.orientation + 2 * drone_turning_angle);
 
                 potential_movements.Add(north);
                 potential_movements.Add(north_west);
@@ -437,41 +439,41 @@ public class StateNode : IComparable<StateNode> {
                 // move north by sqrt(2*cellength^2):
                 Tuple<Vector3, float> north = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) *
-                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                    (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                     this.orientation);
                 // move northwest by cellength:
                 Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) * cellength,
-                    this.orientation - drone_turning_angle);
+                    (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) * cellength
+                    + this.world_position, this.orientation - drone_turning_angle);
                 // move northeast by cellength:
                 Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) * cellength,
-                    this.orientation + drone_turning_angle);
+                    (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) * cellength
+                    + this.world_position, this.orientation + drone_turning_angle);
                 // move south by sqrt(2*cellength^2):
                 Tuple<Vector3, float> south =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 4 * drone_turning_angle, 0) * Vector3.forward) *
-                        (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                        (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                         this.orientation + 4 * drone_turning_angle);
                 // move southwest by cellength:
                 Tuple<Vector3, float> south_west = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation - 3 * drone_turning_angle, 0) * Vector3.forward) * cellength,
-                    this.orientation - 3 * drone_turning_angle);
+                    (Quaternion.Euler(0, this.orientation - 3 * drone_turning_angle, 0) * Vector3.forward) * cellength
+                    + this.world_position, this.orientation - 3 * drone_turning_angle);
                 // move southeast by cellength:
                 Tuple<Vector3, float> south_east = new Tuple<Vector3, float>(
-                    (Quaternion.Euler(0, this.orientation + 3 * drone_turning_angle, 0) * Vector3.forward) * cellength,
-                    this.orientation + 3 * drone_turning_angle);
+                    (Quaternion.Euler(0, this.orientation + 3 * drone_turning_angle, 0) * Vector3.forward) * cellength
+                    + this.world_position, this.orientation + 3 * drone_turning_angle);
                 // move west by sqrt(2*cellength^2):
                 Tuple<Vector3, float> west =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation - 2 * drone_turning_angle, 0) * Vector3.forward) *
-                        (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                        (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                         this.orientation - 2 * drone_turning_angle);
                 // move east by sqrt(2*cellength^2):
                 Tuple<Vector3, float> east =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 2 * drone_turning_angle, 0) * Vector3.forward) *
-                        (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))),
+                        (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
                         this.orientation + 2 * drone_turning_angle);
 
                 potential_movements.Add(north);
@@ -485,16 +487,19 @@ public class StateNode : IComparable<StateNode> {
             }
         }
 
-        var valid_movements = this.checkForObstacles(potential_movements);
+        //Make sure new nodes are not in same pos and opposite direction of other cars' paths:
+        var non_conflicting_movements = checkForConflictingPaths(potential_movements, vehicle);
+        //Make sure new nodes give an obstacle free path:
+        var valid_movements = checkForObstacles(non_conflicting_movements);
 
         foreach (var valid_movement in valid_movements)
         {
-            var new_position = this.world_position + valid_movement.Item1;
+            var new_position = valid_movement.Item1;
             var new_orientation = valid_movement.Item2;
             StateNode new_node = new StateNode(new_position, new_orientation, this.start_pos_global, this.goal_pos_global, this, mapManager, obstacleMap, myCarIndex);
             
             //I want to draw out all positions we visit to get a feel of how A* explores the space:
-            //if (crazyCarIndex == myCarIndex) Debug.DrawLine(this.world_position+Vector3.up*0.1f, new_position+Vector3.up*0.1f, Color.green, 1000f);
+            //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.DrawLine(this.world_position+Vector3.up*0.1f, new_position+Vector3.up*0.1f, Color.green, 1000f);
             
             //Have we seen this potential node/ cell before? Let's check Q first and then visited_nodes. Maybe should rewire path for a shorter one!
             StateNode prev_node_in_Q = null;
@@ -563,6 +568,46 @@ public class StateNode : IComparable<StateNode> {
         return childnodes_list;
     }
 
+    private static List<Tuple<Vector3, float>> checkForConflictingPaths(List<Tuple<Vector3, float>> potential_movements, String vehicle)
+    {   //This method uses the Dictionary globalPathRegistry to lookup positions that have been used in other cars' paths.
+        //The orientations used at a previously used position are stored in a Hashset as the value to the key which is the global position.
+        //If we explore a new position in A* that has previously been used, we have to ensure that it was used with orientations 
+        //that were not the opposite of the new orientation that we would adopt at the new position in this new node. If that were the case, 
+        //the new node is discarded in order to avoid overlapping paths in opposite directions (which can cause head-on collisions).
+        //Dictionaries are implemented as Hashtables. Searches in Hashtables and Hashsets have time complexity O(1) on average, which means 
+        //this shouldn't add a lot of time to the planning phase - hopefully.
+        
+        List<Tuple<Vector3, float>> non_conflicting_movements = new List<Tuple<Vector3, float>>();
+        Dictionary<Vector3, HashSet<float>> global_path_registry = new Dictionary<Vector3, HashSet<float>>();
+        
+        if (vehicle == "car") { global_path_registry = AIP1TrafficCar.globalPathRegistry; }
+        //else if (vehicle == "drone") { var global_path_registry = AIP2TrafficDrone.globalPathRegistry; }
+        
+        for (int i = 0; i < potential_movements.Count; i++)
+        {
+            bool non_conflicting_movement = true;
+            var potential_new_position = potential_movements[i].Item1; //Access first element in tuple by calling .Item1
+            if (global_path_registry.ContainsKey(potential_new_position))
+            {
+                float potential_new_orientation = potential_movements[i].Item2;
+                float[] opposite_orientations = {potential_new_orientation - 180f, potential_new_orientation + 180f};
+                foreach (float opposite_orientation in opposite_orientations)
+                {
+                    HashSet<float> existing_orientations = global_path_registry[potential_new_position];
+                    if (existing_orientations.Contains(opposite_orientation)) //If hashset of orientations at this world_pos contains opposite orientation
+                    {
+                        //We have a conflicting movement, do not add this potential movement as new node, to queue
+                        non_conflicting_movement = false;
+                        break;
+                    }
+                }
+            }
+            //Add potential_movement[i] if it does not lead to a new node in opposite direction of existing node in same position
+            if (non_conflicting_movement == true) non_conflicting_movements.Add(potential_movements[i]);
+        }
+        return non_conflicting_movements;
+    }
+
     private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements)
     {   //This method goes through every potential movement and sweeps a Sphere from this.world_pos to potential_new_pos
         //The sphere has radius 2.5f which just about covers the car, and ensures that chosen waypoints and the paths 
@@ -572,7 +617,7 @@ public class StateNode : IComparable<StateNode> {
         for (int i = 0; i < potential_movements.Count; i++)
         {
             bool valid_movement = true;
-            var potential_new_position = this.world_position + potential_movements[i].Item1; //Access first element in tuple by calling .Item1
+            var potential_new_position = potential_movements[i].Item1; //Access first element in tuple by calling .Item1
             Vector3 direction = (potential_new_position - this.world_position).normalized; //Normalize heading to get direction vector
             float distance = Vector3.Distance(potential_new_position, this.world_position);
             
@@ -598,7 +643,7 @@ public class StateNode : IComparable<StateNode> {
     
     public void fillPaths(List<StateNode> path_of_nodes, List<Vector3> path_of_points) 
 
-    {// Returns path containing this node and all of its parents        
+    {// Takes path and fills it with this node and all of its parents        
         path_of_nodes.Add(this);
         path_of_points.Add(this.world_position);
         

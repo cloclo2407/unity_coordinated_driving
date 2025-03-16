@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using FormationGame;
 using Imported.StandardAssets.Vehicles.Car.Scripts;
+using Newtonsoft.Json;
 using Scripts.Map;
 using Scripts.Game;
 using UnityEditor;
@@ -19,11 +20,13 @@ using Vector2 = UnityEngine.Vector2;
 [RequireComponent(typeof(CarController))]
 public class AIP1TrafficCar : MonoBehaviour
 {
+    //Dict of all waypoints used by all cars, and the orientations at those waypoints:
+    public static Dictionary<Vector3, HashSet<float>> globalPathRegistry = new Dictionary<Vector3, HashSet<float>>();
     public static int carCounter = 0; //This field belongs to the class/type, not to any specific object of the class
 
     //It is used to give an index to the specific car clone that has this script attached.
     public int myCarIndex; //This car's specific index in array of agents m_OtherCars (includes this car!)
-    private int crazyCarIndex = 10; //For debugging when a specific car is acting crazy
+    public static int crazyCarIndex = 10; //For debugging when a specific car is acting crazy
     private float waiting_multiplier = 0f;
     private bool start_moving = false;
     public bool goal_reached = false;
@@ -41,7 +44,7 @@ public class AIP1TrafficCar : MonoBehaviour
     private Formation m_Formation;
     private Intersection m_Intersection;
     
-    private List<StateNode> path_of_nodes = new List<StateNode>();
+    public List<StateNode> path_of_nodes = new List<StateNode>();
     public List<Vector3> path_of_points = new List<Vector3>();
 
     public int currentPathIndex = 1;
@@ -143,7 +146,6 @@ public class AIP1TrafficCar : MonoBehaviour
         
 
         PriorityQueue Q = new PriorityQueue();
-        StateNode.crazyCarIndex = crazyCarIndex; //for debugging
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
         StateNode start_node = new StateNode(start_pos_global, resultAngle, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
         Q.Enqueue(start_node);
@@ -171,12 +173,31 @@ public class AIP1TrafficCar : MonoBehaviour
                 Q.Enqueue(n);
             } //Add all new nodes to the queue
         }
-
-        //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
+        
+        
+        //If path.Count() != 0, i.e. we found a path for this car, add all its waypoints to the globalPathRegistry
+        if (path_of_nodes.Count() != 0)
+        {
+            foreach (StateNode node in path_of_nodes)
+            {
+                if (!globalPathRegistry.ContainsKey(node.world_position)) //If this world_pos is not in globalPathRegistry already
+                {
+                    globalPathRegistry.Add(node.world_position, new HashSet<float>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
+                }
+                globalPathRegistry[node.world_position].Add(node.orientation); //Add this node's orientation to Hashset corresponding to same node's world_pos
+                /* The key-value pairs in globalPathRegistry are Vector3 and Hashset<float>. The reason for this is so we can keep track of positions used
+                in paths of other cars while planning the path for this car. We keep a Hashset of all orientations of every node at the corresponding
+                world_pos in order to be able to check if a new node is at a world_pos that's already been used, AND IF SO, if it previously was used
+                with an orientation opposite to the new node's orientation. If that is the case, we discard the new node to not allow overlapping paths
+                in opposite directions. This is to avoid head on collisions that cars may have trouble getting out of and drones will suffer a lot from.*/
+            }
+        }
+        
+        /* //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
         foreach (StateNode node in path_of_nodes)
         {
             StateNode.used_waypoints.Add(node.cell_position);
-        }
+        } */
 
         // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
         for (int i = 0; i < path_of_points.Count - 1; i++) {
