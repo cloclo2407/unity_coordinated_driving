@@ -55,7 +55,7 @@ public class AIP2TrafficDrone : MonoBehaviour
 
     //For driving:
     private float goalpoint_margin = 3.8f; //Serves as a means of checking if we're close enough to goal while planning path
-    public float distToPoint = 4f; // min distance to go to the next point in path
+    public float distToPoint = 2f; // min distance to go to the next point in path
     public bool hasToStop; // for intersection
     private bool droneCloseInFront; //for when another drone is close in front to this drone, then we should stop and allow the drone in front to move away
     private int timeStoppedForFrontDrone = 0;
@@ -274,13 +274,6 @@ public class AIP2TrafficDrone : MonoBehaviour
 
                 if (currentPathIndex == path_of_points.Count - 1) { distToPoint = 2; } //Changing distToPoint to be smaller when next waypoint is the goal
 
-                // Can set a bigger distance to help the beginning
-                else if (currentPathIndex < 4)
-                {
-                    distToPoint = 4f;
-                }
-                else { distToPoint = 4f; } //reset
-
                 if (currentPathIndex == path_of_points.Count) goal_reached = true;
             }
 
@@ -301,9 +294,9 @@ public class AIP2TrafficDrone : MonoBehaviour
             if (!hasToStop) // Check if you're stuck or if your're waiting for another drone to go
             {
                 // If you have an obstacle behind you go forward
-                if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Drone.Move(-transform.forward.x, -transform.forward.z);
-                else m_Drone.Move(-transform.forward.x, -transform.forward.z); //go backwards
-
+                //if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z);
+                //else m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z); //go backwards
+                m_Drone.Move(-my_rigidbody.linearVelocity.x, -my_rigidbody.linearVelocity.z);   
                 timeStuck -= 1;
                 if (timeStuck == 0) isStuck = false;
             }
@@ -325,8 +318,8 @@ public class AIP2TrafficDrone : MonoBehaviour
 
         // Scale k_p and k_d based on distance between 1 and 10
         float scaleFactor = Mathf.Clamp(distance / 2f, 1f, 1f);  // Adjust 2f(first one) to control sensitivity, bigger means accelarate more abruptly
-        float k_p_dynamic = Mathf.Lerp(3f, 4f, scaleFactor / 1f);
-        float k_d_dynamic = Mathf.Lerp(4f, 4f, scaleFactor / 1f);
+        float k_p_dynamic = Mathf.Lerp(3f, 10f, scaleFactor / 1f);
+        float k_d_dynamic = Mathf.Lerp(4f, 8f, scaleFactor / 1f);
 
         float k_v = Mathf.Lerp(1f, 2f, scaleFactor / 8f);  // New gain factor for velocity feedback
         Vector3 velocity_damping = -k_v * my_rigidbody.linearVelocity;
@@ -334,7 +327,7 @@ public class AIP2TrafficDrone : MonoBehaviour
         // a PD-controller to get desired acceleration from errors in position and velocity
         Vector3 position_error = target_position - transform.position;
         Vector3 velocity_error = target_velocity - my_rigidbody.linearVelocity;
-        Vector3 desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
+        desired_acceleration = k_p_dynamic * position_error + k_d_dynamic * velocity_error + velocity_damping;
 
         Debug.DrawLine(transform.position, transform.position + desired_acceleration.normalized * 5, Color.yellow);
     }
@@ -364,8 +357,8 @@ public class AIP2TrafficDrone : MonoBehaviour
         //Check for AGENTS close in front
         if (!disableFrontCheck)
         {
-            droneCloseInFront = Physics.Raycast(transform.position + Vector3.up, transform.forward, 10f, LayerMask.GetMask("Default"));
-            Debug.DrawRay(transform.position + Vector3.up, transform.forward * 10f, Color.black);
+            droneCloseInFront = Physics.Raycast(transform.position + Vector3.up, my_rigidbody.linearVelocity.normalized, 10f, LayerMask.GetMask("Default"));
+            Debug.DrawRay(transform.position + Vector3.up, my_rigidbody.linearVelocity.normalized * 10f, Color.black);
         }
         else
         {
@@ -396,25 +389,7 @@ public class AIP2TrafficDrone : MonoBehaviour
     {   //Method that stops the drone without using the handbrake in order to avoid the handbrake bug
         //The handbrake bug causes the drone to have trouble resetting the handbrake to 0 after using the handbrake
         //This makes the drone unable to start accelerating again even after setting handbrake=0f, accel>0.
-
-        if (my_rigidbody.linearVelocity.magnitude > 0.005f)
-        {
-            if (Vector3.Dot(my_rigidbody.transform.forward, my_rigidbody.linearVelocity) < 0)
-            { //If the dot product is negative, the vectors point in opposite directions and that means
-              //linearVelocity is pointing backwards, therefore we should accelerate forwards
-                m_Drone.Move(transform.forward.x, transform.forward.z);
-            }
-            else
-            { //If the dot product is positive, the vectors point in the same direction and that means
-              //linearVelocity is pointing forwards, therefore we should accelerate backwards
-                m_Drone.Move(-transform.forward.x, -transform.forward.z);
-            }
-        }
-        else
-        { //If the velocity magnitude is less than 0.005f, we consider the drone stopped
-            m_Drone.Move(0f, 0f);
-        }
-
+        m_Drone.Move(-my_rigidbody.linearVelocity.x, -my_rigidbody.linearVelocity.z);
     }
 
 }
