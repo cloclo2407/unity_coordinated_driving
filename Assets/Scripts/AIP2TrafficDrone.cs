@@ -410,7 +410,7 @@ public class AIP2TrafficDrone : MonoBehaviour
                 }
             }
 
-            for (float j = -11f; j <= 11f; j += 5.5f)
+            for (float j = -6f; j <= 6f; j += 3f)
             {
                 RaycastHit waypoint_hit_obj;
                 Debug.DrawRay(transform.position+Vector3.up, Quaternion.Euler(0f, j, 0f) * from_agent_to_waypoint.normalized * front_scan_distance, Color.black);
@@ -442,7 +442,7 @@ public class AIP2TrafficDrone : MonoBehaviour
         
         //Dynamic obstacle avoidance with RAYCASTS
         raycast_disk_hit_positions.Clear();
-        float disk_scan_distance = 2.2f;
+        float disk_scan_distance = 2.5f;
 
         for (float i = -180f; i <= 180f; i += 10f) //Rays go from -180 degrees to +180 degrees. One ray per 20 degrees - 18 rays.
         {
