@@ -581,7 +581,7 @@ public class StateNode : IComparable<StateNode> {
         Dictionary<Vector3, HashSet<float>> global_path_registry = new Dictionary<Vector3, HashSet<float>>();
         
         if (vehicle == "car") { global_path_registry = AIP1TrafficCar.globalPathRegistry; }
-        //else if (vehicle == "drone") { var global_path_registry = AIP2TrafficDrone.globalPathRegistry; }
+        if (vehicle == "drone") { global_path_registry = AIP2TrafficDrone.globalPathRegistry; }
         
         for (int i = 0; i < potential_movements.Count; i++)
         {

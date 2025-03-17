@@ -11,11 +11,11 @@ public class IntersectionDrone
 {
     private float minAngleToStop = 35f; // minimum angle between the orientation of two drones to stop (if their orientation is similar they don't stop because they can follow each other)
     private float translationDistance = 2f; // the distance to translate one segment of the path to left and right to check if the other path doesn't cross but is too close
-    private int myFrontDifferent = 10;//5;
-    private int myFrontSimilar = 9;//4;
-    private int otherFront = 11;//6;
-    private int otherBackSimilar = 6;//1;
-    private int otherBackDifferent = 7;//2;
+    private int myFrontDifferent = 5;
+    private int myFrontSimilar = 4;
+    private int otherFront = 6;
+    private int otherBackSimilar = 1;
+    private int otherBackDifferent = 2;
     private float similarDirectionThreshold = 38f;
     /*
      * Function that returns a boolean to indicate if a drone has to stop because its path crosses another drone's path
@@ -32,21 +32,25 @@ public class IntersectionDrone
         AIP2TrafficDrone myDroneScript = myDrone.GetComponent<AIP2TrafficDrone>(); // Get the script
         List<Vector3> myPath = myDroneScript.path_of_points;
         int myIndex = myDroneScript.currentPathIndex;
+        Vector3 myWaypoint = myPath[myIndex];
+        Vector3 myDirection = myWaypoint+Vector3.up*1.8f - myPosition; //The actual waypoints are below and in front of the drone
 
         foreach (var otherDrone in m_OtherDrones) // Check for all the other drones if my path is going to intersect their path
         {
             if (otherDrone == myDrone) continue; // skip self
-
-            Vector3 otherPosition = otherDrone.transform.position;
+            
             AIP2TrafficDrone otherDroneScript = otherDrone.GetComponent<AIP2TrafficDrone>();
-            List<Vector3> otherPath = otherDroneScript.path_of_points;
-            int otherIndex = otherDroneScript.currentPathIndex;
-
             if (otherDroneScript.goal_reached) continue; // ignore drone who already reached their goal
-
-            if (otherPath == null || myPath == null) continue; // Ensure paths are valid
-
-            float angle = Vector3.Angle(myDrone.transform.forward, otherDrone.transform.forward); // calculate angle between the two drones
+            
+            List<Vector3> otherPath = otherDroneScript.path_of_points;
+            if (otherPath.Count() == 0 || myPath.Count() == 0) continue; // Ensure paths are valid
+            
+            Vector3 otherPosition = otherDrone.transform.position;
+            int otherIndex = otherDroneScript.currentPathIndex;
+            Vector3 otherWaypoint = otherPath[otherIndex];
+            Vector3 otherDirection = otherWaypoint+Vector3.up*1.8f - otherPosition; //The actual waypoints are below and in front of the drone
+            
+            float angle = Vector3.Angle(myDirection, otherDirection); // calculate angle between the two drones' headings
 
             int myFront;
             int otherBack;
@@ -83,7 +87,7 @@ public class IntersectionDrone
                             {
 
                                 Vector3 deltaPosition = otherPosition - myPosition;
-                                float behind = Vector3.Dot(deltaPosition.normalized, myDrone.transform.forward);
+                                float behind = Vector3.Dot(deltaPosition.normalized, myDirection.normalized);
 
 
                                 if (behind > 0f && !otherDroneScript.hasToStop) // If my drone is behind
