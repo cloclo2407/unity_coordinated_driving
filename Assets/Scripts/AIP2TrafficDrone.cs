@@ -63,7 +63,7 @@ public class AIP2TrafficDrone : MonoBehaviour
     Vector3 desired_acceleration;
 
     //private bool obstacles_close = false;
-    private List<Vector3> raycast_hit_positions = new List<Vector3>();
+    private List<Vector3> raycast_disk_hit_positions = new List<Vector3>();
   
 
     public List<GameObject> targetObjects;
@@ -240,8 +240,36 @@ public class AIP2TrafficDrone : MonoBehaviour
         if (droneCloseInFront == true) //Make the drone stop for drone in front to have a chance to drive away without collision
         { //Keep driving only if the raycast in front returns false.
             StopTheDrone();
-            timeStoppedForFrontDrone += 1;
-            if (timeStoppedForFrontDrone >= 500) disableFrontCheck = true; //If we've been waiting for more than 10 seconds, disable front checks so we can do collision recovery
+            //timeStoppedForFrontDrone += 1;
+            //if (timeStoppedForFrontDrone >= 500) disableFrontCheck = true; //If we've been waiting for more than 10 seconds, disable front checks so we can do collision recovery
+            return;
+        }
+        else if (raycast_disk_hit_positions.Count() > 0) //We have another agent in our raycast disk
+        {
+            //waypoint_margin = 4f; //Increasing waypoint margin while maneuvering away from obstacle to not lose path
+            
+            foreach (Vector3 hit_pos in raycast_disk_hit_positions)
+            { //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
+
+                target_position = hit_pos;
+                PdTracker();
+                m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z);
+                
+                /*
+                if (obstacle_avoiding_steering < obstacle_avoiding_steering_limit)
+                {
+                    var old_waypoint = smooth_path_of_points[0];
+                    Vector3 target_v = (hit_pos - old_waypoint) / Time.fixedDeltaTime; //This is just the adapted PD
+                    Vector3 pos_err = hit_pos - car_pos_global; //controller algorithm
+                    Vector3 velocity_err =
+                    target_v - my_rigidbody.linearVelocity; //used for steering away from obstacles
+                    Vector3 desired_acc = k_p * pos_err + k_d * velocity_err;
+                    obstacle_avoiding_steering += -Vector3.Dot(desired_acc, transform.right);
+                    obstacle_avoiding_steering = Mathf.Clamp(obstacle_avoiding_steering, -1 * 
+                        obstacle_avoiding_steering_limit, obstacle_avoiding_steering_limit);
+                }*/
+            }
+
             return;
         }
 
@@ -351,7 +379,8 @@ public class AIP2TrafficDrone : MonoBehaviour
 
         obsRightClose = Physics.Raycast(transform.position, directionRight, out hitRight, maxRangeClose);
         obsLeftClose = Physics.Raycast(transform.position, directionLeft, out hitLeft, maxRangeClose);
-        obsStraightClose = Physics.Raycast(transform.position, transform.TransformDirection(new Vector3(0, 0, 1)), out hitStraight, maxRangeClose);
+        obsStraightClose = Physics.Raycast(transform.position, transform.TransformDirection(new Vector3(0, 0, 1)),
+            out hitStraight, maxRangeClose);
         obsBackRightClose = Physics.Raycast(transform.position, directionBackRight, out hitBackRight, maxRangeClose);
         obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
         obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
@@ -359,10 +388,23 @@ public class AIP2TrafficDrone : MonoBehaviour
         //Check for AGENTS close in front
         if (!disableFrontCheck)
         {
-            droneCloseInFront = Physics.Raycast(transform.position + Vector3.up, my_rigidbody.linearVelocity.normalized, 10f, LayerMask.GetMask("Default"));
+            Vector3 current_waypoint =
+                path_of_points[currentPathIndex] +
+                Vector3.up * 1.8f; //Vector3.up is added to not have the ray point into the ground
+            Vector3 from_agent_to_waypoint = current_waypoint - transform.position;
+            //droneCloseInFront is set to true if any of the two rays we cast return true.
+            //The rays are: one from drone in direction of its velocity, one from drone in direction of current waypoint
+
+            droneCloseInFront =
+                Physics.Raycast(transform.position + Vector3.up, my_rigidbody.linearVelocity.normalized,
+                    10f, LayerMask.GetMask("Default")) || Physics.Raycast(
+                    transform.position + Vector3.up, from_agent_to_waypoint.normalized, 10f,
+                    LayerMask.GetMask("Default"));
+
             Debug.DrawRay(transform.position + Vector3.up, my_rigidbody.linearVelocity.normalized * 10f, Color.black);
+            Debug.DrawRay(transform.position + Vector3.up, from_agent_to_waypoint.normalized * 10f, Color.black);
         }
-        else
+        /*else
         {
             droneCloseInFront = false;
             timeStoppedForFrontDrone = 0;
@@ -374,6 +416,23 @@ public class AIP2TrafficDrone : MonoBehaviour
                 timeFrontCheckDisabled = 0;
             }
 
+        }*/
+        
+        //Dynamic obstacle avoidance with RAYCASTS
+        raycast_disk_hit_positions.Clear();
+        float scan_distance = 2.5f;
+
+        for (float i = -180f; i <= 180f; i += 10f) //Rays go from -180 degrees to +180 degrees. One ray per 10 degrees - 18 rays.
+        {
+            Vector3 direction_i = Vector3.Normalize(Quaternion.Euler(0, i, 0) * transform.forward); //Quat.Euler(0,i,0)*transf.fwd rotates transf.fwd i degrees around y-axis
+            Debug.DrawLine(transform.position, transform.position + (direction_i * scan_distance), Color.white);
+
+            RaycastHit hit_object; //declare hit-object
+            if (Physics.Raycast(transform.position, direction_i, out hit_object, scan_distance, LayerMask.GetMask("Default")))
+            {
+                //Agent detected close to vehicle, save the position where raycast hit it
+                raycast_disk_hit_positions.Add(hit_object.point); //adding point of impact (in global coords) where ray hit the obstacle
+            }
         }
     }
 
