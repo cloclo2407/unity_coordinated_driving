@@ -25,6 +25,7 @@ public class Intersection
      * Stop if the other car doesn't have to stop && the angle between the two cars is > minAngleToStop
      */
         public bool HasToStop(CarController myCar, GameObject[] m_OtherCars)
+
         {
             Vector3 myPosition = myCar.transform.position;
             AIP1TrafficCar myCarScript = myCar.GetComponent<AIP1TrafficCar>(); // Get the script
@@ -32,6 +33,7 @@ public class Intersection
             int myIndex = myCarScript.currentPathIndex;
 
             foreach (var otherCar in m_OtherCars) // Check for all the other cars if my path is going to intersect their path
+
             {
                 if (otherCar == myCar) continue; // skip self
 
@@ -61,6 +63,7 @@ public class Intersection
                 for (int i = Mathf.Max(myIndex-2, 0); i < Mathf.Min(myIndex + myFront, myPath.Count - 1); i++) // Check right behind me and the next few segments of my path
                 {
                     for (int j = Mathf.Max(otherIndex-otherBack, 0); j < Mathf.Min(otherIndex + otherFront, otherPath.Count - 1); j++) // Check right behind the other car and the next few segments of its path
+
                     {
                         Vector3 myStart = myPath[i];
                         Vector3 otherStart = otherPath[j];

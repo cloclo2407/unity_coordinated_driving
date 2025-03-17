@@ -40,7 +40,6 @@ public class AIP1TrafficCar : MonoBehaviour
     private List<MultiVehicleGoal> m_CurrentGoals;
 
     private ImprovePath m_improvePath;
-    private Orca m_Orca;
     private Formation m_Formation;
     private Intersection m_Intersection;
     
@@ -113,8 +112,6 @@ public class AIP1TrafficCar : MonoBehaviour
         m_CurrentGoals = gameManagerA2.GetGoals(this.gameObject); // This car's goal.
         teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
         m_OtherCars = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
-
-        m_Orca = new Orca(m_Car, my_rigidbody, m_OtherCars);
 
         // Note that this array will have "holes" when objects are destroyed. For initial planning they should work.
         // If you don't like the "holes", you can re-fetch this during fixed update.
@@ -240,6 +237,7 @@ public class AIP1TrafficCar : MonoBehaviour
             Vector3 new_velocity = Vector3.zero;
             //if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
             //else new_velocity = Vector3.zero;
+
             DriveAndRecover(new_velocity); //follow path, recover if stuck
         }
     }
@@ -291,6 +289,7 @@ public class AIP1TrafficCar : MonoBehaviour
             old_target_pos = path_of_points[currentPathIndex - 1];
             target_velocity = (target_position - old_target_pos) / 2f;
         }
+
 
         hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars); // Check if if we have to stop
 

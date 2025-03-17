@@ -16,8 +16,6 @@ using Vector2 = UnityEngine.Vector2;
 using Imported.StandardAssets.Vehicles.Car.Scripts;
 using Scripts.Vehicle;
 
-
-
 [RequireComponent(typeof(DroneController))]
 public class AIP2TrafficDrone : MonoBehaviour
 {
@@ -42,6 +40,7 @@ public class AIP2TrafficDrone : MonoBehaviour
     private IntersectionDrone m_Intersection;
 
     public List<StateNode> path_of_nodes = new List<StateNode>();
+
     public List<Vector3> path_of_points = new List<Vector3>();
 
     public int currentPathIndex = 1;
@@ -66,6 +65,7 @@ public class AIP2TrafficDrone : MonoBehaviour
     //private bool obstacles_close = false;
     private List<Vector3> raycast_hit_positions = new List<Vector3>();
   
+
     public List<GameObject> targetObjects;
     public List<GameObject> teamVehicles;
 
@@ -79,7 +79,6 @@ public class AIP2TrafficDrone : MonoBehaviour
     {
         m_Drone = GetComponent<DroneController>();
         my_rigidbody = GetComponent<Rigidbody>();
-
         m_improvePath = new ImprovePath();
         m_Intersection = new IntersectionDrone();
 
@@ -190,6 +189,7 @@ public class AIP2TrafficDrone : MonoBehaviour
     private IEnumerator wait()
     {
         yield return new WaitForSeconds(myDroneIndex * waiting_multiplier);
+
         //Fixedupdate runs while start is waiting so we need to define a flag that forbids update from driving while Start is waiting
         this.start_moving = true;
     }
@@ -202,6 +202,7 @@ public class AIP2TrafficDrone : MonoBehaviour
         {
             //Checks if we have any driving left to do
             Vector3 new_velocity = Vector3.zero;
+
             DriveAndRecover(new_velocity); //follow path, recover if stuck
         }
     }
@@ -225,6 +226,7 @@ public class AIP2TrafficDrone : MonoBehaviour
         {
             Handles.color = Color.green; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
             Handles.DrawWireDisc(transform.position, Vector3.up, 4f); // draw a blue circle around a drone that is stopping for intersection
+
         }
 
     }
@@ -340,6 +342,7 @@ public class AIP2TrafficDrone : MonoBehaviour
     private void UpdateRaycast()
     {
         // Rotate the drone's forward vector by �30� to get left/right directions for the raycast
+
         Vector3 directionRight = Quaternion.Euler(0, -30, 0) * transform.forward;
         Vector3 directionLeft = Quaternion.Euler(0, 30, 0) * transform.forward;
         Vector3 directionBackLeft = Quaternion.Euler(0, 150, 0) * transform.forward;
@@ -352,7 +355,6 @@ public class AIP2TrafficDrone : MonoBehaviour
         obsBackRightClose = Physics.Raycast(transform.position, directionBackRight, out hitBackRight, maxRangeClose);
         obsBackLeftClose = Physics.Raycast(transform.position, directionBackLeft, out hitBackLeft, maxRangeClose);
         obsBackClose = Physics.Raycast(transform.position, directionBack, out hitBack, maxRangeClose);
-
 
         //Check for AGENTS close in front
         if (!disableFrontCheck)
@@ -390,8 +392,8 @@ public class AIP2TrafficDrone : MonoBehaviour
         //The handbrake bug causes the drone to have trouble resetting the handbrake to 0 after using the handbrake
         //This makes the drone unable to start accelerating again even after setting handbrake=0f, accel>0.
         m_Drone.Move(-my_rigidbody.linearVelocity.x, -my_rigidbody.linearVelocity.z);
+
     }
 
 }
 
-  

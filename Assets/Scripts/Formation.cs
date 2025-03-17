@@ -16,6 +16,7 @@ public class Formation
      * Update attribute carToFollow of the AIP if there is a car to follow
      */
     public void LineFormation(CarController my_Car, GameObject[] m_OtherCars, Vector3 target_position)
+
     {
         AIP1TrafficCar myCarScript = my_Car.GetComponent<AIP1TrafficCar>(); // Get the script
 
@@ -51,6 +52,7 @@ public class Formation
 
             // If I can follow this car and it's the closest to me until now I update closestCar
             if (distance < closestDistance && CanBeFollowed(my_Car.transform.position, my_Car.GetComponent<Rigidbody>().linearVelocity, otherPosition, otherVelocity, target_position))
+
             {
                 closestCar = otherCar;
                 closestDistance = distance;
@@ -62,6 +64,7 @@ public class Formation
         { 
             myCarScript.carToFollow = closestCar.GetComponent<CarController>();
             AIP1TrafficCar otherCarScript = closestCar.GetComponent<AIP1TrafficCar>();
+
 
             // I check if this car is not already following me (can happen if they are next to each other)
             if (otherCarScript.carToFollow != null)
@@ -87,6 +90,7 @@ public class Formation
                 // Insertion into the formation
                 otherCarScript.followingCar.GetComponent<AIP1TrafficCar>().carToFollow = my_Car; // the car following the car I want to follow is going to follow me
                 otherCarScript.followingCar = my_Car;
+
                 return;
             }
             
