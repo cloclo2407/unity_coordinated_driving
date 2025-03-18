@@ -127,11 +127,7 @@ public class AIP1TrafficCar : MonoBehaviour
 
         ComputeAllPaths();
         path_of_points = list_paths[0];
-        Debug.Log("Car " + myCarIndex + " has " +  list_paths.Count + " path");
-        foreach (var  path in list_paths)
-        {
-            Debug.Log("size : " + path.Count);
-        }
+        
         
         
         /* //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
