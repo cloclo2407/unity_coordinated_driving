@@ -125,7 +125,25 @@ public class AIP1TrafficCar : MonoBehaviour
         carCounter++; //myCarIndex is used to find the specific start_pos and goal_pos of this car
 
         Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
-        Vector3 goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
+        Vector3 goal_pos_global;
+
+        // Get the team for this vehicle
+        string teamKey = gameManagerA2.GetGroup(this.gameObject);
+
+        if (teamKey == "Free")
+        {
+            goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
+
+        }
+        else
+        {
+            // Get goals assigned to the team
+            List<MultiVehicleGoal> teamGoals = gameManagerA2.GetGoals(teamVehicles.First());
+
+            // Assign one goal per vehicle within the team
+            int index = teamVehicles.IndexOf(this.gameObject);
+            goal_pos_global = teamGoals[index].GetTargetObject().transform.position;
+        }
 
         start_pos_global = SnapToGridCenter(start_pos_global, cell_size); // Update to center of cell
 
