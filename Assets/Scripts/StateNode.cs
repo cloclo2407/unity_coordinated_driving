@@ -584,6 +584,7 @@ public class StateNode : IComparable<StateNode> {
         {
             global_path_registry = AIP1TrafficCar.globalPathRegistry;
             //Debug.Log("Vehicle is car, global_path_registry.Count: " + global_path_registry.Count());
+
             for (int i = 0; i < potential_movements.Count; i++)
             {
                 bool non_conflicting_movement = true;
@@ -604,6 +605,7 @@ public class StateNode : IComparable<StateNode> {
                             {
                                 //We have a conflicting movement, do not add this potential movement as new node, to queue
                                 //Debug.Log("Conflicting movement!");
+
                                 non_conflicting_movement = false;
                                 break;
                             }
@@ -644,6 +646,7 @@ public class StateNode : IComparable<StateNode> {
                         foreach (StateNode existing_node in existing_nodes_at_current_position)
                         {
                             //Debug.Log("Checking node at current_pos...");
+
                             if (existing_node.parent_node != null)
                             {
                                 if (Rounded(existing_node.parent_node.world_position) == Rounded(potential_new_position)) //Is there a parent to node at current_pos, at new_pos?
@@ -651,6 +654,7 @@ public class StateNode : IComparable<StateNode> {
                                     //We have a node at new_pos with child at current_pos already, so we shouldn't move from
                                     // current_pos to new_pos as that would become an overlapping path to an existing path
                                     // in the opposite direction. These things cause gridlocks, so we need to filter them out
+
                                     //Debug.Log("Conflicting movement!");
                                     non_conflicting_movement = false;
                                     break;
