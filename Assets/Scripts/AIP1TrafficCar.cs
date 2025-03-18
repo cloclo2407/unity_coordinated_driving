@@ -163,53 +163,8 @@ public class AIP1TrafficCar : MonoBehaviour
             resultAngle += 360f;
         }
         
-
-        PriorityQueue Q = new PriorityQueue();
-        Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
-        StateNode start_node = new StateNode(start_pos_global, resultAngle, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
-        Q.Enqueue(start_node);
-
-        while (Q.Count != 0)
-        {
-            var current_node = Q.Dequeue();
-            if (!visited_nodes.ContainsKey(current_node.cell_position))
-            {
-                visited_nodes.Add(current_node.cell_position, current_node);
-            }
-
-            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.goalpoint_margin) //We have reached the goal, time to create the path
-            {
-                current_node.fillPaths(this.path_of_nodes, this.path_of_points);
-                //Now the path_of_nodes and path_of_points are ready to be executed. We can either use StateNodes or Vector3s in the controller.
-                break; // BREAK OUT OF WHILE LOOP, WE'RE DONE HERE
-            }
-
-            //else we keep looking:
-            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
-            foreach (StateNode n in new_nodes)
-            {
-                Q.Enqueue(n);
-            } //Add all new nodes to the queue
-        }
+        path_of_points = ComputePath(start_pos_global, goal_pos_global, resultAngle, cell_scale);
         
-        
-        //If path.Count() != 0, i.e. we found a path for this car, add all its waypoints to the globalPathRegistry
-        if (path_of_nodes.Count() != 0)
-        {
-            foreach (StateNode node in path_of_nodes)
-            {
-                if (!globalPathRegistry.ContainsKey(node.world_position)) //If this world_pos is not in globalPathRegistry already
-                {
-                    globalPathRegistry.Add(node.world_position, new HashSet<float>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
-                }
-                globalPathRegistry[node.world_position].Add(node.orientation); //Add this node's orientation to Hashset corresponding to same node's world_pos
-                /* The key-value pairs in globalPathRegistry are Vector3 and Hashset<float>. The reason for this is so we can keep track of positions used
-                in paths of other cars while planning the path for this car. We keep a Hashset of all orientations of every node at the corresponding
-                world_pos in order to be able to check if a new node is at a world_pos that's already been used, AND IF SO, if it previously was used
-                with an orientation opposite to the new node's orientation. If that is the case, we discard the new node to not allow overlapping paths
-                in opposite directions. This is to avoid head on collisions that cars may have trouble getting out of and drones will suffer a lot from.*/
-            }
-        }
         
         /* //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
         foreach (StateNode node in path_of_nodes)
@@ -549,6 +504,59 @@ public class AIP1TrafficCar : MonoBehaviour
             m_Car.Move(0f,0f,0f,0f);
         }
         
+    }
+
+    private List<Vector3> ComputePath(Vector3 start_pos_global, Vector3 goal_pos_global, float resultAngle, Vector3 cell_scale)
+    {
+        List<StateNode> path_nodes = new List<StateNode>();
+        List<Vector3> path_points = new List<Vector3>();
+        PriorityQueue Q = new PriorityQueue();
+        Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
+        StateNode start_node = new StateNode(start_pos_global, resultAngle, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
+        Q.Enqueue(start_node);
+
+        while (Q.Count != 0)
+        {
+            var current_node = Q.Dequeue();
+            if (!visited_nodes.ContainsKey(current_node.cell_position))
+            {
+                visited_nodes.Add(current_node.cell_position, current_node);
+            }
+
+            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.goalpoint_margin) //We have reached the goal, time to create the path
+            {
+                current_node.fillPaths(path_nodes, path_points);
+                //Now the path_of_nodes and path_of_points are ready to be executed. We can either use StateNodes or Vector3s in the controller.
+                break; // BREAK OUT OF WHILE LOOP, WE'RE DONE HERE
+            }
+
+            //else we keep looking:
+            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
+            foreach (StateNode n in new_nodes)
+            {
+                Q.Enqueue(n);
+            } //Add all new nodes to the queue
+        }
+
+
+        //If path.Count() != 0, i.e. we found a path for this car, add all its waypoints to the globalPathRegistry
+        if (path_nodes.Count() != 0)
+        {
+            foreach (StateNode node in path_nodes)
+            {
+                if (!globalPathRegistry.ContainsKey(node.world_position)) //If this world_pos is not in globalPathRegistry already
+                {
+                    globalPathRegistry.Add(node.world_position, new HashSet<float>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
+                }
+                globalPathRegistry[node.world_position].Add(node.orientation); //Add this node's orientation to Hashset corresponding to same node's world_pos
+                /* The key-value pairs in globalPathRegistry are Vector3 and Hashset<float>. The reason for this is so we can keep track of positions used
+                in paths of other cars while planning the path for this car. We keep a Hashset of all orientations of every node at the corresponding
+                world_pos in order to be able to check if a new node is at a world_pos that's already been used, AND IF SO, if it previously was used
+                with an orientation opposite to the new node's orientation. If that is the case, we discard the new node to not allow overlapping paths
+                in opposite directions. This is to avoid head on collisions that cars may have trouble getting out of and drones will suffer a lot from.*/
+            }
+        }
+        return path_points;
     }
 
 }
