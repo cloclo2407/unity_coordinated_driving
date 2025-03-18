@@ -21,7 +21,7 @@ using Vector2 = UnityEngine.Vector2;
 public class AIP1TrafficCar : MonoBehaviour
 {
     //Dict of all waypoints used by all cars, and the orientations at those waypoints:
-    public static Dictionary<Vector3, HashSet<float>> globalPathRegistry = new Dictionary<Vector3, HashSet<float>>();
+    public static Dictionary<Vector3, HashSet<StateNode>> globalPathRegistry = new Dictionary<Vector3, HashSet<StateNode>>();
     public static int carCounter = 0; //This field belongs to the class/type, not to any specific object of the class
 
     //It is used to give an index to the specific car clone that has this script attached.
@@ -30,6 +30,9 @@ public class AIP1TrafficCar : MonoBehaviour
     private float waiting_multiplier = 0f;
     private bool start_moving = false;
     public bool goal_reached = false;
+
+    private float cell_size = 3f;
+    private Vector3 cell_scale = Vector3.one * 3f;
 
     private CarController m_Car; // the car controller we want to use
     private BoxCollider carCollider; //unused BoxCollider
@@ -40,14 +43,15 @@ public class AIP1TrafficCar : MonoBehaviour
     private List<MultiVehicleGoal> m_CurrentGoals;
 
     private ImprovePath m_improvePath;
-    private Orca m_Orca;
     private Formation m_Formation;
     private Intersection m_Intersection;
     
     public List<StateNode> path_of_nodes = new List<StateNode>();
     public List<Vector3> path_of_points = new List<Vector3>();
+    public List<List<Vector3>> list_paths = new List<List<Vector3>>();
 
     public int currentPathIndex = 1;
+    private int currentPath = 0;
     public Vector3 target_position;
     public Vector3 target_velocity;
     public Vector3 old_target_pos;
@@ -101,25 +105,17 @@ public class AIP1TrafficCar : MonoBehaviour
         m_improvePath = new ImprovePath();
         m_Formation = new Formation();
         m_Intersection = new Intersection();
-        
+
         m_MapManager = FindFirstObjectByType<MapManager>();
-        float cell_size = 3f;
-        Vector3 cell_scale = Vector3.one * cell_size;
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), cell_scale);
         m_ObstacleMap.margin = Vector3.one * 2f; // (Changing cell margins, do they work?)
         StateNode.cell_size = cell_size;
 
-        var gameManagerA2 = FindFirstObjectByType<GameManagerA2>();
-        m_CurrentGoals = gameManagerA2.GetGoals(this.gameObject); // This car's goal.
-        teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
         m_OtherCars = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
-
-        m_Orca = new Orca(m_Car, my_rigidbody, m_OtherCars);
 
         // Note that this array will have "holes" when objects are destroyed. For initial planning they should work.
         // If you don't like the "holes", you can re-fetch this during fixed update.
         // Equivalent ways to find all the targets in the scene
-        targetObjects = m_CurrentGoals.Select(goal => goal.GetTargetObject()).ToList(); //targetObjects is a list of one element for some reason
         // You can also fetch other types of objects using tags, assuming the objects you are looking for HAVE tags :).
         // Feel free to refer to any examples from previous assignments.
 
@@ -127,74 +123,12 @@ public class AIP1TrafficCar : MonoBehaviour
         myCarIndex = carCounter % m_MapManager.startPositions.Count; //Index of this specific car
         carCounter++; //myCarIndex is used to find the specific start_pos and goal_pos of this car
 
-        Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
-        Vector3 goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
 
-        start_pos_global = SnapToGridCenter(start_pos_global, cell_size); // Update to center of cell
 
-        // Calculate the starting angle of the car
-        // Get the current Y rotation angle (in degrees)
-        float currentAngle = m_Car.transform.rotation.eulerAngles.y;
-
-        // Find the closest multiple of 30 degrees
-        float closestMultipleOf30 = Mathf.Round(currentAngle / 30f) * 30f;
-
-        // Ensure the angle is within 0 to 360 degrees
-        float resultAngle = closestMultipleOf30 % 360f;
-
-        // If the result is negative, ensure it's within the positive range (0 to 360)
-        if (resultAngle < 0)
-        {
-            resultAngle += 360f;
-        }
-        
-
-        PriorityQueue Q = new PriorityQueue();
-        Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
-        StateNode start_node = new StateNode(start_pos_global, resultAngle, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
-        Q.Enqueue(start_node);
-
-        while (Q.Count != 0)
-        {
-            var current_node = Q.Dequeue();
-            if (!visited_nodes.ContainsKey(current_node.cell_position))
-            {
-                visited_nodes.Add(current_node.cell_position, current_node);
-            }
-
-            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.goalpoint_margin) //We have reached the goal, time to create the path
-            {
-                current_node.fillPaths(this.path_of_nodes, this.path_of_points);
-                //Now the path_of_nodes and path_of_points are ready to be executed. We can either use StateNodes or Vector3s in the controller.
-                break; // BREAK OUT OF WHILE LOOP, WE'RE DONE HERE
-            }
-
-            //else we keep looking:
-            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
-            foreach (StateNode n in new_nodes)
-            {
-                Q.Enqueue(n);
-            } //Add all new nodes to the queue
-        }
+        ComputeAllPaths();
+        path_of_points = list_paths[0];
         
         
-        //If path.Count() != 0, i.e. we found a path for this car, add all its waypoints to the globalPathRegistry
-        if (path_of_nodes.Count() != 0)
-        {
-            foreach (StateNode node in path_of_nodes)
-            {
-                if (!globalPathRegistry.ContainsKey(node.world_position)) //If this world_pos is not in globalPathRegistry already
-                {
-                    globalPathRegistry.Add(node.world_position, new HashSet<float>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
-                }
-                globalPathRegistry[node.world_position].Add(node.orientation); //Add this node's orientation to Hashset corresponding to same node's world_pos
-                /* The key-value pairs in globalPathRegistry are Vector3 and Hashset<float>. The reason for this is so we can keep track of positions used
-                in paths of other cars while planning the path for this car. We keep a Hashset of all orientations of every node at the corresponding
-                world_pos in order to be able to check if a new node is at a world_pos that's already been used, AND IF SO, if it previously was used
-                with an orientation opposite to the new node's orientation. If that is the case, we discard the new node to not allow overlapping paths
-                in opposite directions. This is to avoid head on collisions that cars may have trouble getting out of and drones will suffer a lot from.*/
-            }
-        }
         
         /* //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
         foreach (StateNode node in path_of_nodes)
@@ -240,6 +174,7 @@ public class AIP1TrafficCar : MonoBehaviour
             Vector3 new_velocity = Vector3.zero;
             //if (m_Orca.NeedOrca()) new_velocity = m_Orca.EvadeCollisionWithORCA(); //We have other agents close by, use ORCA
             //else new_velocity = Vector3.zero;
+
             DriveAndRecover(new_velocity); //follow path, recover if stuck
         }
     }
@@ -291,6 +226,7 @@ public class AIP1TrafficCar : MonoBehaviour
             old_target_pos = path_of_points[currentPathIndex - 1];
             target_velocity = (target_position - old_target_pos) / 2f;
         }
+
 
         hasToStop = m_Intersection.HasToStop(m_Car, m_OtherCars); // Check if if we have to stop
 
@@ -361,7 +297,16 @@ public class AIP1TrafficCar : MonoBehaviour
                 }
                 else { distToPoint = 4f; } //reset
 
-                if (currentPathIndex == path_of_points.Count) goal_reached = true;  
+                if (currentPathIndex == path_of_points.Count)
+                {
+                    if (currentPath < list_paths.Count - 1)
+                    {
+                        currentPath++;
+                        path_of_points = list_paths[currentPath];
+                        currentPathIndex = 1;
+                    }
+                    else goal_reached = true;
+                }
             }
 
             // If you're barely moving it means you may be stuckstuck
@@ -532,6 +477,139 @@ public class AIP1TrafficCar : MonoBehaviour
             m_Car.Move(0f,0f,0f,0f);
         }
         
+    }
+
+    /*
+     * Execute A* algo to compute a path from start_pos_global to goal_pos_global starting in orientation resultAngle
+     */
+    private List<Vector3> ComputePath(Vector3 start_pos_global, Vector3 goal_pos_global, float startAngle, out float finishAngle)
+    {
+        finishAngle = -10f;
+        List<StateNode> path_nodes = new List<StateNode>();
+        List<Vector3> path_points = new List<Vector3>();
+        PriorityQueue Q = new PriorityQueue();
+        Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
+        StateNode start_node = new StateNode(start_pos_global, startAngle, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myCarIndex);
+        Q.Enqueue(start_node);
+
+        while (Q.Count != 0)
+        {
+            var current_node = Q.Dequeue();
+            if (!visited_nodes.ContainsKey(current_node.cell_position))
+            {
+                visited_nodes.Add(current_node.cell_position, current_node);
+            }
+
+            if (Vector3.Distance(current_node.world_position, goal_pos_global) <= this.goalpoint_margin) //We have reached the goal, time to create the path
+            {
+                current_node.fillPaths(path_nodes, path_points);
+                //Now the path_of_nodes and path_of_points are ready to be executed. We can either use StateNodes or Vector3s in the controller.
+                break; // BREAK OUT OF WHILE LOOP, WE'RE DONE HERE
+            }
+
+            //else we keep looking:
+            List<StateNode> new_nodes = current_node.makeChildNodes(visited_nodes, Q, m_MapManager, m_ObstacleMap, cell_scale.z, "car");
+            foreach (StateNode n in new_nodes)
+            {
+                Q.Enqueue(n);
+            } //Add all new nodes to the queue
+        }
+
+
+        //If path.Count() != 0, i.e. we found a path for this car, add all its waypoints to the globalPathRegistry
+        if (path_nodes.Count() != 0)
+        {
+            foreach (StateNode node in path_nodes)
+            {
+                if (!globalPathRegistry.ContainsKey(node.world_position)) //If this world_pos is not in globalPathRegistry already
+                {
+                    globalPathRegistry.Add(node.world_position, new HashSet<StateNode>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
+                }
+                globalPathRegistry[node.world_position].Add(node); //Add this node's orientation to Hashset corresponding to same node's world_pos
+            }
+            finishAngle = path_nodes[path_nodes.Count - 1].orientation;
+        }
+        return path_points;
+    }
+
+    private void ComputeAllPaths()
+    {
+        var gameManagerA2 = FindFirstObjectByType<GameManagerA2>();
+
+        Vector3 start_pos_global = m_MapManager.startPositions[this.myCarIndex];
+        start_pos_global = SnapToGridCenter(start_pos_global, cell_size); // Update to center of cell
+
+        Vector3 goal_pos_global;
+
+        // Calculate the starting angle of the car
+        // Get the current Y rotation angle (in degrees)
+        float currentAngle = m_Car.transform.rotation.eulerAngles.y;
+
+        // Find the closest multiple of 30 degrees
+        float closestMultipleOf30 = Mathf.Round(currentAngle / 30f) * 30f;
+
+        // Ensure the angle is within 0 to 360 degrees
+        float startAngle = closestMultipleOf30 % 360f;
+
+        // If the result is negative, ensure it's within the positive range (0 to 360)
+        if (startAngle < 0)
+        {
+            startAngle += 360f;
+        }
+
+        List<Vector3> new_path;
+        float finishAngle;
+
+        // Get the team for this vehicle
+        string teamKey = gameManagerA2.GetGroup(this.gameObject);
+
+        if (teamKey == "Free") // Not bakery
+        {
+            goal_pos_global = m_MapManager.targetPositions[this.myCarIndex];
+            new_path = ComputePath(start_pos_global, goal_pos_global, startAngle, out finishAngle);
+            list_paths.Add(new_path);
+        }
+        else //Bakery
+        {
+            // Get goals assigned to the team
+            teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
+            List<MultiVehicleGoal> teamGoals = gameManagerA2.GetGoals(teamVehicles.First());
+
+            if (teamGoals.Count == teamVehicles.Count) // same number of vehicles and goals
+            {
+                // Assign one goal per vehicle within the team
+                int index = teamVehicles.IndexOf(this.gameObject);
+                goal_pos_global = teamGoals[index].GetTargetObject().transform.position;
+                new_path = ComputePath(start_pos_global, goal_pos_global, startAngle, out finishAngle);
+                list_paths.Add(new_path);
+            }
+
+            else if (teamGoals.Count < teamVehicles.Count) // less goals than vehicles
+            {
+                // Assign one goal per vehicle within the team if index of vehicle < nb of goals
+                int index = teamVehicles.IndexOf(this.gameObject);
+                if (index < teamGoals.Count)
+                {
+                    goal_pos_global = teamGoals[index].GetTargetObject().transform.position;
+                    new_path = ComputePath(start_pos_global, goal_pos_global, startAngle, out finishAngle);
+                    list_paths.Add(new_path);
+                }
+            }
+            else // more goals than vehicles
+            {
+                int index = teamVehicles.IndexOf(this.gameObject);
+                while (index < teamGoals.Count) {
+                    goal_pos_global = teamGoals[index].GetTargetObject().transform.position;
+                    new_path = ComputePath(start_pos_global, goal_pos_global, startAngle, out finishAngle);
+                    if (new_path.Count == 0) break;
+                    list_paths.Add(new_path);
+                    startAngle = finishAngle;
+                    start_pos_global = goal_pos_global;
+                    start_pos_global = SnapToGridCenter(start_pos_global, cell_size); // Update to center of cell
+                    index += teamVehicles.Count;
+                }
+            }
+        }
     }
 
 }
