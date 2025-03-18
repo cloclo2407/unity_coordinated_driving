@@ -21,7 +21,7 @@ using Vector2 = UnityEngine.Vector2;
 public class AIP1TrafficCar : MonoBehaviour
 {
     //Dict of all waypoints used by all cars, and the orientations at those waypoints:
-    public static Dictionary<Vector3, HashSet<float>> globalPathRegistry = new Dictionary<Vector3, HashSet<float>>();
+    public static Dictionary<Vector3, HashSet<StateNode>> globalPathRegistry = new Dictionary<Vector3, HashSet<StateNode>>();
     public static int carCounter = 0; //This field belongs to the class/type, not to any specific object of the class
 
     //It is used to give an index to the specific car clone that has this script attached.
@@ -182,9 +182,9 @@ public class AIP1TrafficCar : MonoBehaviour
             {
                 if (!globalPathRegistry.ContainsKey(node.world_position)) //If this world_pos is not in globalPathRegistry already
                 {
-                    globalPathRegistry.Add(node.world_position, new HashSet<float>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
+                    globalPathRegistry.Add(node.world_position, new HashSet<StateNode>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
                 }
-                globalPathRegistry[node.world_position].Add(node.orientation); //Add this node's orientation to Hashset corresponding to same node's world_pos
+                globalPathRegistry[node.world_position].Add(node); //Add this node's orientation to Hashset corresponding to same node's world_pos
                 /* The key-value pairs in globalPathRegistry are Vector3 and Hashset<float>. The reason for this is so we can keep track of positions used
                 in paths of other cars while planning the path for this car. We keep a Hashset of all orientations of every node at the corresponding
                 world_pos in order to be able to check if a new node is at a world_pos that's already been used, AND IF SO, if it previously was used

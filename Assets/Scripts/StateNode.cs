@@ -384,42 +384,42 @@ public class StateNode : IComparable<StateNode> {
                 // move north by cellength:
                 Tuple<Vector3, float> north =
                     new Tuple<Vector3, float>((Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) * cellength
-                                              + this.world_position, this.orientation);
+                                              + this.world_position, NormalizeAngle(this.orientation));
                 // move northwest diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) *
                     (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d))))
-                    + this.world_position, this.orientation - drone_turning_angle);
+                    + this.world_position, NormalizeAngle(this.orientation - drone_turning_angle));
                 // move northeast diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) *
                     (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
-                    this.orientation + drone_turning_angle);
+                    NormalizeAngle(this.orientation + drone_turning_angle));
                 // move south by cellength
                 Tuple<Vector3, float> south =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 4 * drone_turning_angle, 0) * Vector3.forward) *
-                        cellength + this.world_position, this.orientation + 4 * drone_turning_angle);
+                        cellength + this.world_position, NormalizeAngle(this.orientation + 4 * drone_turning_angle));
                 // move southwest diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> south_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation - 3 * drone_turning_angle, 0) * Vector3.forward) *
                     (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
-                    this.orientation - 3 * drone_turning_angle);
+                    NormalizeAngle(this.orientation - 3 * drone_turning_angle));
                 // move southeast diagonally by sqrt(2*cellength^2):
                 Tuple<Vector3, float> south_east = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + 3 * drone_turning_angle, 0) * Vector3.forward) *
                     (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
-                    this.orientation + 3 * drone_turning_angle);
+                    NormalizeAngle(this.orientation + 3 * drone_turning_angle));
                 // move west by cellength
                 Tuple<Vector3, float> west =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation - 2 * drone_turning_angle, 0) * Vector3.forward) *
-                        cellength + this.world_position, this.orientation - 2 * drone_turning_angle);
+                        cellength + this.world_position, NormalizeAngle(this.orientation - 2 * drone_turning_angle));
                 // move east by cellength
                 Tuple<Vector3, float> east =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 2 * drone_turning_angle, 0) * Vector3.forward) *
-                        cellength + this.world_position, this.orientation + 2 * drone_turning_angle);
+                        cellength + this.world_position, NormalizeAngle(this.orientation + 2 * drone_turning_angle));
 
                 potential_movements.Add(north);
                 potential_movements.Add(north_west);
@@ -440,41 +440,41 @@ public class StateNode : IComparable<StateNode> {
                 Tuple<Vector3, float> north = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation, 0) * Vector3.forward) *
                     (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
-                    this.orientation);
+                    NormalizeAngle(this.orientation));
                 // move northwest by cellength:
                 Tuple<Vector3, float> north_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation - drone_turning_angle, 0) * Vector3.forward) * cellength
-                    + this.world_position, this.orientation - drone_turning_angle);
+                    + this.world_position, NormalizeAngle(this.orientation - drone_turning_angle));
                 // move northeast by cellength:
                 Tuple<Vector3, float> north_east = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + drone_turning_angle, 0) * Vector3.forward) * cellength
-                    + this.world_position, this.orientation + drone_turning_angle);
+                    + this.world_position, NormalizeAngle(this.orientation + drone_turning_angle));
                 // move south by sqrt(2*cellength^2):
                 Tuple<Vector3, float> south =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 4 * drone_turning_angle, 0) * Vector3.forward) *
                         (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
-                        this.orientation + 4 * drone_turning_angle);
+                        NormalizeAngle(this.orientation + 4 * drone_turning_angle));
                 // move southwest by cellength:
                 Tuple<Vector3, float> south_west = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation - 3 * drone_turning_angle, 0) * Vector3.forward) * cellength
-                    + this.world_position, this.orientation - 3 * drone_turning_angle);
+                    + this.world_position, NormalizeAngle(this.orientation - 3 * drone_turning_angle));
                 // move southeast by cellength:
                 Tuple<Vector3, float> south_east = new Tuple<Vector3, float>(
                     (Quaternion.Euler(0, this.orientation + 3 * drone_turning_angle, 0) * Vector3.forward) * cellength
-                    + this.world_position, this.orientation + 3 * drone_turning_angle);
+                    + this.world_position, NormalizeAngle(this.orientation + 3 * drone_turning_angle));
                 // move west by sqrt(2*cellength^2):
                 Tuple<Vector3, float> west =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation - 2 * drone_turning_angle, 0) * Vector3.forward) *
                         (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
-                        this.orientation - 2 * drone_turning_angle);
+                        NormalizeAngle(this.orientation - 2 * drone_turning_angle));
                 // move east by sqrt(2*cellength^2):
                 Tuple<Vector3, float> east =
                     new Tuple<Vector3, float>(
                         (Quaternion.Euler(0, this.orientation + 2 * drone_turning_angle, 0) * Vector3.forward) *
                         (float)(Math.Sqrt(2d * (Math.Pow((double)cellength, 2d)))) + this.world_position,
-                        this.orientation + 2 * drone_turning_angle);
+                        NormalizeAngle(this.orientation + 2 * drone_turning_angle));
 
                 potential_movements.Add(north);
                 potential_movements.Add(north_west);
@@ -488,7 +488,7 @@ public class StateNode : IComparable<StateNode> {
         }
 
         //Make sure new nodes are not in same pos and opposite direction of other cars' paths:
-        var non_conflicting_movements = checkForConflictingPaths(potential_movements, vehicle);
+        var non_conflicting_movements = checkForConflictingPaths(this.world_position, potential_movements, vehicle);
         //Make sure new nodes give an obstacle free path:
         var valid_movements = checkForObstacles(non_conflicting_movements);
 
@@ -568,7 +568,7 @@ public class StateNode : IComparable<StateNode> {
         return childnodes_list;
     }
 
-    private static List<Tuple<Vector3, float>> checkForConflictingPaths(List<Tuple<Vector3, float>> potential_movements, String vehicle)
+    private static List<Tuple<Vector3, float>> checkForConflictingPaths(Vector3 current_position, List<Tuple<Vector3, float>> potential_movements, String vehicle)
     {   //This method uses the Dictionary globalPathRegistry to lookup positions that have been used in other cars' paths.
         //The orientations used at a previously used position are stored in a Hashset as the value to the key which is the global position.
         //If we explore a new position in A* that has previously been used, we have to ensure that it was used with orientations 
@@ -578,34 +578,107 @@ public class StateNode : IComparable<StateNode> {
         //this shouldn't add a lot of time to the planning phase - hopefully.
         
         List<Tuple<Vector3, float>> non_conflicting_movements = new List<Tuple<Vector3, float>>();
-        Dictionary<Vector3, HashSet<float>> global_path_registry = new Dictionary<Vector3, HashSet<float>>();
+        Dictionary<Vector3, HashSet<StateNode>> global_path_registry = new Dictionary<Vector3, HashSet<StateNode>>();
         
-        if (vehicle == "car") { global_path_registry = AIP1TrafficCar.globalPathRegistry; }
-        if (vehicle == "drone") { global_path_registry = AIP2TrafficDrone.globalPathRegistry; }
-        
-        for (int i = 0; i < potential_movements.Count; i++)
+        if (vehicle == "car")
         {
-            bool non_conflicting_movement = true;
-            var potential_new_position = potential_movements[i].Item1; //Access first element in tuple by calling .Item1
-            if (global_path_registry.ContainsKey(potential_new_position))
+            global_path_registry = AIP1TrafficCar.globalPathRegistry;
+            Debug.Log("Vehicle is car, global_path_registry.Count: " + global_path_registry.Count());
+            for (int i = 0; i < potential_movements.Count; i++)
             {
-                float potential_new_orientation = potential_movements[i].Item2;
-                float[] opposite_orientations = {potential_new_orientation - 180f, potential_new_orientation + 180f};
-                foreach (float opposite_orientation in opposite_orientations)
+                bool non_conflicting_movement = true;
+                var potential_new_position = potential_movements[i].Item1; //Access first element in tuple by calling .Item1
+                if (global_path_registry.ContainsKey(potential_new_position))
                 {
-                    HashSet<float> existing_orientations = global_path_registry[potential_new_position];
-                    if (existing_orientations.Contains(opposite_orientation)) //If hashset of orientations at this world_pos contains opposite orientation
+                    Debug.Log("potential_new_pos is in globalPathReg");
+                    float potential_new_orientation = potential_movements[i].Item2;
+                    float[] opposite_orientations = {potential_new_orientation - 180f, potential_new_orientation + 180f};
+                    HashSet<StateNode> existing_nodes = global_path_registry[potential_new_position];
+                    foreach (float opposite_orientation in opposite_orientations)
                     {
-                        //We have a conflicting movement, do not add this potential movement as new node, to queue
-                        non_conflicting_movement = false;
-                        break;
+                        if (non_conflicting_movement == false) break; //Found a conflicting movement already in loop below
+                        foreach (StateNode existing_node in existing_nodes)
+                        {
+                            Debug.Log("Checking node at potential_new_pos...");
+                            if (existing_node.orientation == opposite_orientation) //If any node in hashset of nodes at this world_pos contains opposite orientation
+                            {
+                                //We have a conflicting movement, do not add this potential movement as new node, to queue
+                                Debug.Log("Conflicting movement!");
+                                non_conflicting_movement = false;
+                                break;
+                            }
+                        }
                     }
                 }
+                //Add potential_movement[i] if it does not lead to a new node in opposite direction of existing node in same position
+                if (non_conflicting_movement == true) non_conflicting_movements.Add(potential_movements[i]);
             }
-            //Add potential_movement[i] if it does not lead to a new node in opposite direction of existing node in same position
-            if (non_conflicting_movement == true) non_conflicting_movements.Add(potential_movements[i]);
         }
+        
+        else if (vehicle == "drone")
+        { 
+            global_path_registry = AIP2TrafficDrone.globalPathRegistry;
+            //Debug.Log("Vehicle is drone, global_path_registry.Count: " + global_path_registry.Count());
+            
+            
+            for (int j = 0; j < potential_movements.Count; j++)
+            {
+                bool non_conflicting_movement = true;
+                Vector3 potential_new_position = potential_movements[j].Item1; //Access first element in tuple by calling .Item1
+                
+                /*
+                foreach (var key in global_path_registry.Keys) {
+                    if (Vector3.Distance(key, potential_new_position) < 0.2f) {
+                        Debug.Log("Potential match found: " + key + " ≈ " + potential_new_position);
+                    }
+                }*/
+                
+                
+                if (global_path_registry.ContainsKey(Rounded(potential_new_position))) //Is new_pos in globalPathReg?
+                {
+                    Debug.Log("potential_new_pos is in globalPathReg");
+                    if (global_path_registry.ContainsKey(Rounded(current_position))) //Is current_pos in globalPathReg?
+                    {
+                        Debug.Log("current_pos is in globalPathReg");
+                        HashSet<StateNode> existing_nodes_at_current_position = global_path_registry[Rounded(current_position)];
+                        foreach (StateNode existing_node in existing_nodes_at_current_position)
+                        {
+                            Debug.Log("Checking node at current_pos...");
+                            if (existing_node.parent_node != null)
+                            {
+                                if (Rounded(existing_node.parent_node.world_position) == Rounded(potential_new_position)) //Is there a parent to node at current_pos, at new_pos?
+                                {
+                                    //We have a node at new_pos with child at current_pos already, so we shouldn't move from
+                                    // current_pos to new_pos as that would become an overlapping path to an existing path
+                                    // in the opposite direction. These things cause gridlocks, so we need to filter them out
+                                    Debug.Log("Conflicting movement!");
+                                    non_conflicting_movement = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                //Add potential_movement[i] if it does not lead to a new node in opposite direction of existing node in same position
+                if (non_conflicting_movement == true) non_conflicting_movements.Add(potential_movements[j]);
+            }
+        }
+        
         return non_conflicting_movements;
+    }
+    
+    private static Vector3 Rounded(Vector3 v) {
+        return new Vector3(
+            Mathf.Round(v.x * 1000) / 1000,  // Round to 3 decimal places
+            Mathf.Round(v.y * 1000) / 1000,
+            Mathf.Round(v.z * 1000) / 1000
+        );
+    }
+    
+    private static float NormalizeAngle(float angle_degrees)
+    {//Method forces angles (in degrees) into the interval [-180,180]
+        float angle_degrees_normalized = ((angle_degrees + 180f) % 360f + 360f) % 360f - 180f;
+        return angle_degrees_normalized;
     }
 
     private List<Tuple<Vector3, float>> checkForObstacles(List<Tuple<Vector3, float>> potential_movements)
