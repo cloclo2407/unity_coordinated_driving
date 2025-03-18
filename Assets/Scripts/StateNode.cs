@@ -219,8 +219,8 @@ public class StateNode : IComparable<StateNode> {
         
         if (vehicle == "car")
         {
-            if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("this.orientation: "+this.orientation);
-            if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("cost_to_come: "+this.cost_to_come);
+            //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("this.orientation: "+this.orientation);
+            //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("cost_to_come: "+this.cost_to_come);
             
             if (cost_to_come < smooth_start_distance) //Checking if limit of how far we've used 30-degree turns is reached
             {
@@ -228,7 +228,7 @@ public class StateNode : IComparable<StateNode> {
                 //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("closest_mult_30: "+closest_multiple_of_30);
                 //float remainder = ((closest_multiple_of_30 % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
                 float remainder = ((this.orientation % 90) + 90) % 90; // Ensure remainder is always in range [0, 90)
-                if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("remainder: "+remainder);
+                //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("remainder: "+remainder);
                 //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("-1f*Mathf.Atan(0.5f): "+(Mathf.Rad2Deg*(-1f*Mathf.Atan(0.5f))));
                 //if (AIP1TrafficCar.crazyCarIndex == myCarIndex) Debug.Log("2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))): "+ (Mathf.Rad2Deg*(2f*Mathf.Asin(Mathf.Sqrt(2f)/(2f*Mathf.Sqrt(5f))))));
             
