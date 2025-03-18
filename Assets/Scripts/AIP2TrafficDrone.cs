@@ -21,7 +21,7 @@ public class AIP2TrafficDrone : MonoBehaviour
 {
     private DroneController m_Drone;
     //Dict of all waypoints used by all drones, and the orientations at those waypoints:
-    public static Dictionary<Vector3, HashSet<float>> globalPathRegistry = new Dictionary<Vector3, HashSet<float>>();
+    public static Dictionary<Vector3, HashSet<StateNode>> globalPathRegistry = new Dictionary<Vector3, HashSet<StateNode>>();
     public static int droneCounter = 0; //This field belongs to the class/type, not to any specific object of the class
 
     //It is used to give an index to the specific drone clone that has this script attached.
@@ -165,11 +165,12 @@ public class AIP2TrafficDrone : MonoBehaviour
         {
             foreach (StateNode node in path_of_nodes)
             {
-                if (!globalPathRegistry.ContainsKey(node.world_position)) //If this world_pos is not in globalPathRegistry already
+                if (!globalPathRegistry.ContainsKey(Rounded(node.world_position))) //If this world_pos is not in globalPathRegistry already
                 {
-                    globalPathRegistry.Add(node.world_position, new HashSet<float>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
+                    globalPathRegistry.Add(Rounded(node.world_position), new HashSet<StateNode>()); //Add new world_pos - Hashset<float> pair to globalPathRegistry
                 }
-                globalPathRegistry[node.world_position].Add(node.orientation); //Add this node's orientation to Hashset corresponding to same node's world_pos
+                //Add this node's orientation to Hashset corresponding to same node's world_pos
+                globalPathRegistry[Rounded(node.world_position)].Add(node); 
                 /* The key-value pairs in globalPathRegistry are Vector3 and Hashset<float>. The reason for this is so we can keep track of positions used
                 in paths of other drones while planning the path for this drone. We keep a Hashset of all orientations of every node at the corresponding
                 world_pos in order to be able to check if a new node is at a world_pos that's already been used, AND IF SO, if it previously was used
@@ -177,6 +178,8 @@ public class AIP2TrafficDrone : MonoBehaviour
                 in opposite directions. This is to avoid head on collisions that cars may have trouble getting out of and drones will suffer a lot from.*/
             }
 
+            //Debug.Log("Just added paths to gPR, globalPathRegistry.Count: "+globalPathRegistry.Count());
+            
             // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
             for (int i = 0; i < path_of_points.Count - 1; i++)
             {
@@ -189,6 +192,20 @@ public class AIP2TrafficDrone : MonoBehaviour
         }
 
         StartCoroutine(wait()); //Wait to begin driving
+    }
+    
+    private Vector3 Rounded(Vector3 v) {
+        return new Vector3(
+            Mathf.Round(v.x * 1000) / 1000,  // Round to 3 decimal places
+            Mathf.Round(v.y * 1000) / 1000,
+            Mathf.Round(v.z * 1000) / 1000
+        );
+    }
+    
+    private float NormalizeAngle(float angle_degrees)
+    {//Method forces angles (in degrees) into the interval [-180,180]
+        float angle_degrees_normalized = ((angle_degrees + 180f) % 360f + 360f) % 360f - 180f;
+        return angle_degrees_normalized;
     }
 
     private IEnumerator wait()
