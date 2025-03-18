@@ -9,11 +9,11 @@ public class Intersection
 {
     private float minAngleToStop = 35f; // minimum angle between the orientation of two cars to stop (if their orientation is similar they don't stop because they can follow each other)
     private float translationDistance = 2f; // the distance to translate one segment of the path to left and right to check if the other path doesn't cross but is too close
-    private int myFrontDifferent = 10;//5;
-    private int myFrontSimilar = 9;//4;
-    private int otherFront = 11;//6;
-    private int otherBackSimilar = 6;//1;
-    private int otherBackDifferent = 7;//2;
+    private int myFrontDifferent = 5;
+    private int myFrontSimilar = 4;
+    private int otherFront = 6;
+    private int otherBackSimilar = 1;
+    private int otherBackDifferent = 2;
     private float similarDirectionThreshold = 38f;
     /*
      * Function that returns a boolean to indicate if a car has to stop because its path crosses another car's path

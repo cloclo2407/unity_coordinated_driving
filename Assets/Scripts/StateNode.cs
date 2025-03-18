@@ -583,12 +583,15 @@ public class StateNode : IComparable<StateNode> {
         if (vehicle == "car")
         {
             global_path_registry = AIP1TrafficCar.globalPathRegistry;
+            //Debug.Log("Vehicle is car, global_path_registry.Count: " + global_path_registry.Count());
+
             for (int i = 0; i < potential_movements.Count; i++)
             {
                 bool non_conflicting_movement = true;
                 var potential_new_position = potential_movements[i].Item1; //Access first element in tuple by calling .Item1
                 if (global_path_registry.ContainsKey(potential_new_position))
                 {
+                    //Debug.Log("potential_new_pos is in globalPathReg");
                     float potential_new_orientation = potential_movements[i].Item2;
                     float[] opposite_orientations = {potential_new_orientation - 180f, potential_new_orientation + 180f};
                     HashSet<StateNode> existing_nodes = global_path_registry[potential_new_position];
@@ -597,9 +600,12 @@ public class StateNode : IComparable<StateNode> {
                         if (non_conflicting_movement == false) break; //Found a conflicting movement already in loop below
                         foreach (StateNode existing_node in existing_nodes)
                         {
+                            //Debug.Log("Checking node at potential_new_pos...");
                             if (existing_node.orientation == opposite_orientation) //If any node in hashset of nodes at this world_pos contains opposite orientation
                             {
                                 //We have a conflicting movement, do not add this potential movement as new node, to queue
+                                //Debug.Log("Conflicting movement!");
+
                                 non_conflicting_movement = false;
                                 break;
                             }
@@ -632,11 +638,15 @@ public class StateNode : IComparable<StateNode> {
                 
                 if (global_path_registry.ContainsKey(Rounded(potential_new_position))) //Is new_pos in globalPathReg?
                 {
+                    //Debug.Log("potential_new_pos is in globalPathReg");
                     if (global_path_registry.ContainsKey(Rounded(current_position))) //Is current_pos in globalPathReg?
                     {
+                        //Debug.Log("current_pos is in globalPathReg");
                         HashSet<StateNode> existing_nodes_at_current_position = global_path_registry[Rounded(current_position)];
                         foreach (StateNode existing_node in existing_nodes_at_current_position)
                         {
+                            //Debug.Log("Checking node at current_pos...");
+
                             if (existing_node.parent_node != null)
                             {
                                 if (Rounded(existing_node.parent_node.world_position) == Rounded(potential_new_position)) //Is there a parent to node at current_pos, at new_pos?
@@ -644,6 +654,8 @@ public class StateNode : IComparable<StateNode> {
                                     //We have a node at new_pos with child at current_pos already, so we shouldn't move from
                                     // current_pos to new_pos as that would become an overlapping path to an existing path
                                     // in the opposite direction. These things cause gridlocks, so we need to filter them out
+
+                                    //Debug.Log("Conflicting movement!");
                                     non_conflicting_movement = false;
                                     break;
                                 }

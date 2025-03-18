@@ -262,8 +262,8 @@ public class AIP2TrafficDrone : MonoBehaviour
         if (droneCloseInFront == true) //Make the drone stop for drone in front to have a chance to drive away without collision
         { //Keep driving only if the raycast in front returns false.
             StopTheDrone();
-            //timeStoppedForFrontDrone += 1;
-            //if (timeStoppedForFrontDrone >= 500) disableFrontCheck = true; //If we've been waiting for more than 10 seconds, disable front checks so we can do collision recovery
+            timeStoppedForFrontDrone += 1;
+            if (timeStoppedForFrontDrone >= 600) disableFrontCheck = true; //If we've been waiting for more than 12 seconds, disable front checks so we can do collision recovery
             return;
         }
 
@@ -309,7 +309,7 @@ public class AIP2TrafficDrone : MonoBehaviour
                 {
                     //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
 
-                    if (my_rigidbody.linearVelocity.magnitude < 4f) //Don't accelerate away so fast that the speed sends us into a wall somewhere else
+                    if (my_rigidbody.linearVelocity.magnitude < 5f) //Don't accelerate away so fast that the speed sends us into a wall somewhere else
                     {
                         //This^ if statemenet could maybe depend on how many hit_pos we are trying to accelerate away from
                         //Only take first 4 hit_pos into account to avoid having too many calls to Move() sending the drone away into a wall? :)
@@ -444,22 +444,22 @@ public class AIP2TrafficDrone : MonoBehaviour
                 }
             }
         }
-        /*else
+        else
         {
             droneCloseInFront = false;
             timeStoppedForFrontDrone = 0;
 
             timeFrontCheckDisabled += 1;
-            if (timeFrontCheckDisabled > 100) //If front check has been disabled for longer than 2 seconds, re-enable it
+            if (timeFrontCheckDisabled > 20) //If front check has been disabled for longer than 20 frames, re-enable it
             {
                 disableFrontCheck = false;
                 timeFrontCheckDisabled = 0;
             }
-        }*/
+        }
         
         //Dynamic obstacle avoidance with RAYCASTS
         raycast_disk_hit_positions.Clear();
-        float disk_scan_distance = 2.5f;
+        float disk_scan_distance = 2.6f;
 
         for (float i = -180f; i <= 180f; i += 10f) //Rays go from -180 degrees to +180 degrees. One ray per 20 degrees - 18 rays.
         {
