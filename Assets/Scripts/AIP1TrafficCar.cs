@@ -51,6 +51,7 @@ public class AIP1TrafficCar : MonoBehaviour
     public List<List<Vector3>> list_paths = new List<List<Vector3>>();
 
     public int currentPathIndex = 1;
+    private int currentPath = 0;
     public Vector3 target_position;
     public Vector3 target_velocity;
     public Vector3 old_target_pos;
@@ -126,7 +127,11 @@ public class AIP1TrafficCar : MonoBehaviour
 
         ComputeAllPaths();
         path_of_points = list_paths[0];
-
+        Debug.Log("Car " + myCarIndex + " has " +  list_paths.Count + " path");
+        foreach (var  path in list_paths)
+        {
+            Debug.Log("size : " + path.Count);
+        }
         
         
         /* //Add all visited waypoint cells to hashset keeping track for other runs of A* for other cars (do this before smoothing):
@@ -296,7 +301,16 @@ public class AIP1TrafficCar : MonoBehaviour
                 }
                 else { distToPoint = 4f; } //reset
 
-                if (currentPathIndex == path_of_points.Count) goal_reached = true;  
+                if (currentPathIndex == path_of_points.Count)
+                {
+                    if (currentPath < list_paths.Count - 1)
+                    {
+                        currentPath++;
+                        path_of_points = list_paths[currentPath];
+                        currentPathIndex = 1;
+                    }
+                    else goal_reached = true;
+                }
             }
 
             // If you're barely moving it means you may be stuckstuck
@@ -475,7 +489,6 @@ public class AIP1TrafficCar : MonoBehaviour
     private List<Vector3> ComputePath(Vector3 start_pos_global, Vector3 goal_pos_global, float startAngle, out float finishAngle)
     {
         finishAngle = -10f;
-        Debug.Log("trying to find path from " + start_pos_global + " to " +  goal_pos_global + " with initial angle " + startAngle);
         List<StateNode> path_nodes = new List<StateNode>();
         List<Vector3> path_points = new List<Vector3>();
         PriorityQueue Q = new PriorityQueue();
@@ -571,9 +584,8 @@ public class AIP1TrafficCar : MonoBehaviour
             teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
             List<MultiVehicleGoal> teamGoals = gameManagerA2.GetGoals(teamVehicles.First());
 
-            if (teamGoals.Count >= teamVehicles.Count) // same number of vehicles and goals
+            if (teamGoals.Count == teamVehicles.Count) // same number of vehicles and goals
             {
-                Debug.Log("as many vehicles as goals");
                 // Assign one goal per vehicle within the team
                 int index = teamVehicles.IndexOf(this.gameObject);
                 goal_pos_global = teamGoals[index].GetTargetObject().transform.position;
@@ -583,7 +595,6 @@ public class AIP1TrafficCar : MonoBehaviour
 
             else if (teamGoals.Count < teamVehicles.Count) // less goals than vehicles
             {
-                Debug.Log("more vehicles than goals");
                 // Assign one goal per vehicle within the team if index of vehicle < nb of goals
                 int index = teamVehicles.IndexOf(this.gameObject);
                 if (index < teamGoals.Count)
@@ -595,17 +606,15 @@ public class AIP1TrafficCar : MonoBehaviour
             }
             else // more goals than vehicles
             {
-                Debug.Log("more goals than vehicles");
                 int index = teamVehicles.IndexOf(this.gameObject);
-                goal_pos_global = teamGoals[index].GetTargetObject().transform.position;
                 while (index < teamGoals.Count) {
+                    goal_pos_global = teamGoals[index].GetTargetObject().transform.position;
                     new_path = ComputePath(start_pos_global, goal_pos_global, startAngle, out finishAngle);
                     if (new_path.Count == 0) break;
                     list_paths.Add(new_path);
                     startAngle = finishAngle;
                     start_pos_global = goal_pos_global;
                     start_pos_global = SnapToGridCenter(start_pos_global, cell_size); // Update to center of cell
-                    goal_pos_global = new_path[new_path.Count-1];
                     index += teamVehicles.Count;
                 }
             }
