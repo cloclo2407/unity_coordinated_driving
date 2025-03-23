@@ -48,8 +48,6 @@ public class AIP2TrafficDrone : MonoBehaviour
     public Vector3 old_target_pos;
     public float k_p = 1f;
     public float k_d = 2f;
-    private bool isStuck = false;
-    private int timeStuck = 0;
 
     //For driving:
     private float goalpoint_margin = 3f; //Serves as a means of checking if we're close enough to goal while planning path

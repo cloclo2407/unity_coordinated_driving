@@ -59,8 +59,6 @@ public class AIP1TrafficCar : MonoBehaviour
 
     //For driving:
     private float goalpoint_margin = 3.8f; //Serves as a means of checking if we're close enough to goal while planning path
-    private float speed_limit = 3.5f;
-    private float max_scan_distance = 7.5f; // Testing a variable scan distance
     public float distToPoint = 4f; // min distance to go to the next point in path
     public bool hasToStop; // for intersection
     private bool carCloseInFront; //for when another car is close in front to this car, then we should stop and allow the car in front to move away
