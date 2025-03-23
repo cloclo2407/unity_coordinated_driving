@@ -36,7 +36,6 @@ public class AIP2TrafficDrone : MonoBehaviour
     private GameObject[] m_OtherDrones;
     private List<MultiVehicleGoal> m_CurrentGoals;
 
-    private ImprovePath m_improvePath;
     private IntersectionDrone m_Intersection;
 
     public List<StateNode> path_of_nodes = new List<StateNode>();
@@ -79,13 +78,11 @@ public class AIP2TrafficDrone : MonoBehaviour
     {
         m_Drone = GetComponent<DroneController>();
         my_rigidbody = GetComponent<Rigidbody>();
-        m_improvePath = new ImprovePath();
         m_Intersection = new IntersectionDrone();
 
         m_MapManager = FindFirstObjectByType<MapManager>();
         float cell_size = 2.8f;
         Vector3 cell_scale = Vector3.one * cell_size;
-        //cell_scale.y = 0f; //cell_scale is now [3,0,3]
         m_ObstacleMap = ObstacleMap.Initialize(m_MapManager, new List<GameObject>(), cell_scale);
         m_ObstacleMap.margin = Vector3.one * 2f; // (Changing cell margins, do they work?)
         StateNode.cell_size = cell_size;
@@ -95,14 +92,8 @@ public class AIP2TrafficDrone : MonoBehaviour
         teamVehicles = gameManagerA2.GetGroupVehicles(this.gameObject); //Other vehicles in a Group with this vehicle
         m_OtherDrones = GameObject.FindGameObjectsWithTag("Player"); //All vehicles
 
-        // Note that this array will have "holes" when objects are destroyed. For initial planning they should work.
-        // If you don't like the "holes", you can re-fetch this during fixed update.
-        // Equivalent ways to find all the targets in the scene
         targetObjects = m_CurrentGoals.Select(goal => goal.GetTargetObject()).ToList(); //targetObjects is a list of one element for some reason
-        // You can also fetch other types of objects using tags, assuming the objects you are looking for HAVE tags :).
-        // Feel free to refer to any examples from previous assignments.
-
-        ////////////////////////// Plan your path here
+     
         myDroneIndex = droneCounter % m_MapManager.startPositions.Count; //Index of this specific drone
         droneCounter++; //myDroneIndex is used to find the specific start_pos and goal_pos of this drone
 
@@ -111,28 +102,8 @@ public class AIP2TrafficDrone : MonoBehaviour
 
         start_pos_global = SnapToGridCenter(start_pos_global, cell_size); // Update to center of cell
 
-        /*
-        // Calculate the starting angle of the drone
-        // Get the current Y rotation angle (in degrees)
-        float currentAngle = m_Drone.transform.rotation.eulerAngles.y;
-
-        // Find the closest multiple of 30 degrees
-        float closestMultipleOf30 = Mathf.Round(currentAngle / 30f) * 30f;
-
-        // Ensure the angle is within 0 to 360 degrees
-        float resultAngle = closestMultipleOf30 % 360f;
-
-        // If the result is negative, ensure it's within the positive range (0 to 360)
-        if (resultAngle < 0)
-        {
-            resultAngle += 360f;
-        }
-        */
-
-
         PriorityQueue Q = new PriorityQueue();
         Dictionary<Vector3Int, StateNode> visited_nodes = new Dictionary<Vector3Int, StateNode>();
-        //StateNode start_node = new StateNode(start_pos_global, resultAngle, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myDroneIndex);
         StateNode start_node = new StateNode(start_pos_global, 0f, start_pos_global, goal_pos_global, null, m_MapManager, m_ObstacleMap, myDroneIndex);
         Q.Enqueue(start_node);
 
@@ -159,7 +130,6 @@ public class AIP2TrafficDrone : MonoBehaviour
             } //Add all new nodes to the queue
         }
 
-
         //If path.Count() != 0, i.e. we found a path for this drone, add all its waypoints to the globalPathRegistry
         if (path_of_nodes.Count() != 0)
         {
@@ -177,8 +147,6 @@ public class AIP2TrafficDrone : MonoBehaviour
                 with an orientation opposite to the new node's orientation. If that is the case, we discard the new node to not allow overlapping paths
                 in opposite directions. This is to avoid head on collisions that cars may have trouble getting out of and drones will suffer a lot from.*/
             }
-
-            //Debug.Log("Just added paths to gPR, globalPathRegistry.Count: "+globalPathRegistry.Count());
             
             // Plot your path to see if it makes sense. Note that path can only be seen in "Scene" window, not "Game" window
             for (int i = 0; i < path_of_points.Count - 1; i++)
@@ -248,9 +216,7 @@ public class AIP2TrafficDrone : MonoBehaviour
         {
             Handles.color = Color.green; //Handles are used for debugging in scene view with Unity Editor, never in the game runtime
             Handles.DrawWireDisc(transform.position, Vector3.up, 4f); // draw a blue circle around a drone that is stopping for intersection
-
         }
-
     }
 
     //Follow waypoints and do collision recovery
@@ -262,8 +228,6 @@ public class AIP2TrafficDrone : MonoBehaviour
         if (droneCloseInFront == true) //Make the drone stop for drone in front to have a chance to drive away without collision
         { //Keep driving only if the raycast in front returns false.
             StopTheDrone();
-            //timeStoppedForFrontDrone += 1;
-            //if (timeStoppedForFrontDrone >= 500) disableFrontCheck = true; //If we've been waiting for more than 10 seconds, disable front checks so we can do collision recovery
             return;
         }
 
@@ -277,85 +241,47 @@ public class AIP2TrafficDrone : MonoBehaviour
 
         hasToStop = m_Intersection.HasToStop(m_Drone, m_OtherDrones); // Check if if we have to stop
 
-        //if (!isStuck) // If the drone is not stuck //isStuck is not relevant for drones?
+        
+        if (hasToStop) // If I have to stop for intersection, brake
         {
-            if (hasToStop) // If I have to stop for intersection, brake
-            {
-                StopTheDrone();
-            }
-
-            else
-            {             
-                PdTracker(); // Update acceleration and steering values for driving
-
-                m_Drone.Move(desired_acceleration.x, desired_acceleration.z);
-            }
-
-            // Update currentPathIndex
-            if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
-            {
-                currentPathIndex++;
-
-                if (currentPathIndex == path_of_points.Count - 1) { distToPoint = 0.25f; } //Changing distToPoint to be smaller when next waypoint is the goal
-
-                if (currentPathIndex == path_of_points.Count) goal_reached = true;
-            }
-
-            if (raycast_disk_hit_positions.Count() > 0) //We have another agent in our raycast disk
-            {   //Increasing distToPoint so we can validate waypoints from further away while avoiding obstacles/ other agents
-                distToPoint = 4;
-
-                foreach (Vector3 hit_pos in raycast_disk_hit_positions)
-                {
-                    //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
-
-                    if (my_rigidbody.linearVelocity.magnitude < 4f) //Don't accelerate away so fast that the speed sends us into a wall somewhere else
-                    {
-                        //This^ if statemenet could maybe depend on how many hit_pos we are trying to accelerate away from
-                        //Only take first 4 hit_pos into account to avoid having too many calls to Move() sending the drone away into a wall? :)
-                        target_position = hit_pos;
-                        PdTracker();
-                        m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z);
-                    }
-                }
-                //return;
-            }
-            else distToPoint = 2.5f; //resetting distToPoint to normal value since we are not avoiding any obstacles atm
-
-            /* Not relevant for drones?
-            // If you're barely moving it means you may be stuckstuck
-            if (my_rigidbody.linearVelocity.magnitude < 0.5f)
-            {
-                timeStuck += 1;
-                if (timeStuck > 100) // If you're not moving for too long you're stuck
-                {
-                    isStuck = true;
-                }
-            }
-            else timeStuck = 0;
-            */
+            StopTheDrone();
         }
 
-        /* Not relevant for drones?
-        else //if stuck:
+        else
+        {             
+            PdTracker(); // Update acceleration and steering values for driving
+            m_Drone.Move(desired_acceleration.x, desired_acceleration.z);
+        }
+
+        // Update currentPathIndex
+        if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
         {
-            if (!hasToStop) // Check if you're stuck or if your're waiting for another drone to go
+            currentPathIndex++;
+
+            if (currentPathIndex == path_of_points.Count - 1) { distToPoint = 0.25f; } //Changing distToPoint to be smaller when next waypoint is the goal
+
+            if (currentPathIndex == path_of_points.Count) goal_reached = true;
+        }
+
+        if (raycast_disk_hit_positions.Count() > 0) //We have another agent in our raycast disk
+        {   //Increasing distToPoint so we can validate waypoints from further away while avoiding obstacles/ other agents
+            distToPoint = 4;
+
+            foreach (Vector3 hit_pos in raycast_disk_hit_positions)
             {
-                // If you have an obstacle behind you go forward
-                //if (obsBackClose || obsBackRightClose || obsBackLeftClose) m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z);
-                //else m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z); //go backwards
-                m_Drone.Move(-my_rigidbody.linearVelocity.x, -my_rigidbody.linearVelocity.z);   
-                timeStuck -= 1;
-                if (timeStuck == 0) isStuck = false;
-            }
-            else // you're not stuck you're just waiting at an intersection
-            {
-                timeStuck = 0;
-                isStuck = false;
-                StopTheDrone();
+                //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
+
+                if (my_rigidbody.linearVelocity.magnitude < 4f) //Don't accelerate away so fast that the speed sends us into a wall somewhere else
+                {
+                    //This^ if statemenet could maybe depend on how many hit_pos we are trying to accelerate away from
+                    //Only take first 4 hit_pos into account to avoid having too many calls to Move() sending the drone away into a wall? :)
+                    target_position = hit_pos;
+                    PdTracker();
+                    m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z);
+                }
             }
         }
-        */
+        else distToPoint = 2.5f; //resetting distToPoint to normal value since we are not avoiding any obstacles atm
     }
 
     /*
@@ -444,18 +370,6 @@ public class AIP2TrafficDrone : MonoBehaviour
                 }
             }
         }
-        /*else
-        {
-            droneCloseInFront = false;
-            timeStoppedForFrontDrone = 0;
-
-            timeFrontCheckDisabled += 1;
-            if (timeFrontCheckDisabled > 100) //If front check has been disabled for longer than 2 seconds, re-enable it
-            {
-                disableFrontCheck = false;
-                timeFrontCheckDisabled = 0;
-            }
-        }*/
         
         //Dynamic obstacle avoidance with RAYCASTS
         raycast_disk_hit_positions.Clear();
@@ -490,7 +404,6 @@ public class AIP2TrafficDrone : MonoBehaviour
         //The handbrake bug causes the drone to have trouble resetting the handbrake to 0 after using the handbrake
         //This makes the drone unable to start accelerating again even after setting handbrake=0f, accel>0.
         m_Drone.Move(-my_rigidbody.linearVelocity.x, -my_rigidbody.linearVelocity.z);
-
     }
 
 }

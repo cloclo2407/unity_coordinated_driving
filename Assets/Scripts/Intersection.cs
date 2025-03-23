@@ -81,10 +81,8 @@ public class Intersection
                                 // Check if cars are moving in a similar direction
                                 if (angle < similarDirectionThreshold)
                                 {
-
                                     Vector3 deltaPosition = otherPosition - myPosition;
                                     float behind = Vector3.Dot(deltaPosition.normalized, myCar.transform.forward);
-
 
                                     if (behind > 0f && !otherCarScript.hasToStop) // If my car is behind
                                     {
