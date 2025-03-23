@@ -228,6 +228,9 @@ public class AIP2TrafficDrone : MonoBehaviour
         if (droneCloseInFront == true) //Make the drone stop for drone in front to have a chance to drive away without collision
         { //Keep driving only if the raycast in front returns false.
             StopTheDrone();
+
+            timeStoppedForFrontDrone += 1;
+            if (timeStoppedForFrontDrone >= 600) disableFrontCheck = true; //If we've been waiting for more than 12 seconds, disable front checks so we can do collision recovery
             return;
         }
 
@@ -244,7 +247,48 @@ public class AIP2TrafficDrone : MonoBehaviour
         
         if (hasToStop) // If I have to stop for intersection, brake
         {
-            StopTheDrone();
+
+            if (hasToStop) // If I have to stop for intersection, brake
+            {
+                StopTheDrone();
+            }
+
+            else
+            {             
+                PdTracker(); // Update acceleration and steering values for driving
+
+                m_Drone.Move(desired_acceleration.x, desired_acceleration.z);
+            }
+
+            // Update currentPathIndex
+            if (Vector3.Distance(path_of_points[currentPathIndex], transform.position) < distToPoint)
+            {
+                currentPathIndex++;
+
+                if (currentPathIndex == path_of_points.Count - 1) { distToPoint = 0.25f; } //Changing distToPoint to be smaller when next waypoint is the goal
+
+                if (currentPathIndex == path_of_points.Count) goal_reached = true;
+            }
+
+            if (raycast_disk_hit_positions.Count() > 0) //We have another agent in our raycast disk
+            {   //Increasing distToPoint so we can validate waypoints from further away while avoiding obstacles/ other agents
+                distToPoint = 4;
+
+                foreach (Vector3 hit_pos in raycast_disk_hit_positions)
+                {
+                    //Calculate steering input to obstacle, and then add its negative counterpart (scaled down) to steering inputs later
+
+                    if (my_rigidbody.linearVelocity.magnitude < 5f) //Don't accelerate away so fast that the speed sends us into a wall somewhere else
+                    {
+                        //This^ if statemenet could maybe depend on how many hit_pos we are trying to accelerate away from
+                        //Only take first 4 hit_pos into account to avoid having too many calls to Move() sending the drone away into a wall? :)
+                        target_position = hit_pos;
+                        PdTracker();
+                        m_Drone.Move(-desired_acceleration.x, -desired_acceleration.z);
+                    }
+                }
+            }
+            else distToPoint = 2.5f; //resetting distToPoint to normal value since we are not avoiding any obstacles atm
         }
 
         else
@@ -370,10 +414,23 @@ public class AIP2TrafficDrone : MonoBehaviour
                 }
             }
         }
+
+        else
+        {
+            droneCloseInFront = false;
+            timeStoppedForFrontDrone = 0;
+
+            timeFrontCheckDisabled += 1;
+            if (timeFrontCheckDisabled > 20) //If front check has been disabled for longer than 20 frames, re-enable it
+            {
+                disableFrontCheck = false;
+                timeFrontCheckDisabled = 0;
+            }
+        }
         
         //Dynamic obstacle avoidance with RAYCASTS
         raycast_disk_hit_positions.Clear();
-        float disk_scan_distance = 2.5f;
+        float disk_scan_distance = 2.6f;
 
         for (float i = -180f; i <= 180f; i += 10f) //Rays go from -180 degrees to +180 degrees. One ray per 20 degrees - 18 rays.
         {
