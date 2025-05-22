@@ -1,6 +1,6 @@
 # 🚘🤖 Unity Multi-Agent Navigation — Real-Time Path Planning & Collision Avoidance
 
-This is a project from the course DD2438 at KTH. It focuses on **multi-agent navigation** in complex environments using both **cars and drones**, each assigned a unique goal. The objective is to minimize the time until **all agents reach their goals** without collisions. The maps simulate real-world traffic scenarios involving shared workspaces, bottlenecks, and high-density movement.
+This project focuses on **multi-agent navigation** in complex environments using both **cars and drones**, each assigned a unique goal. The objective is to minimize the time until **all agents reach their goals** without collisions. The maps simulate real-world traffic scenarios involving shared workspaces, bottlenecks, and high-density movement.
 
 This simulation was built in Unity and implements custom real-time path planning and collision avoidance strategies for both ground and aerial vehicles.
 
@@ -87,6 +87,15 @@ Maps simulate various urban traffic scenarios:
 
 ---
 
+## 📘 Course Information
+
+This project was developed for **Assignment 2** of the course  
+**DD2438 – Autonomous Agents and Multi-Agent Systems** at **KTH Royal Institute of Technology**.
+
+The Unity environment, including vehicle models and map assets, was provided as part of the assignment.  
+Our work focused on implementing custom path planning, coordination strategies, and real-time collision avoidance.
+
+---
 
 ## 👤 Authors
 
