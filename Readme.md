@@ -1,31 +1,94 @@
-# Installation
+# 🚘🤖 Unity Multi-Agent Navigation — Real-Time Path Planning & Collision Avoidance
+
+This is a project from the course DD2438 at KTH. It focuses on **multi-agent navigation** in complex environments using both **cars and drones**, each assigned a unique goal. The objective is to minimize the time until **all agents reach their goals** without collisions. The maps simulate real-world traffic scenarios involving shared workspaces, bottlenecks, and high-density movement.
+
+This simulation was built in Unity and implements custom real-time path planning and collision avoidance strategies for both ground and aerial vehicles.
 
 ---
 
-The following should be the easiest way to install and run this project. 
+## 🌐 Problem Overview
 
-1. Clone this repo and the related [Unity Assets package](https://gits-15.sys.kth.se/DD2438/MASUnityAssets)
-2. Place them in a \<parent\> directory such that the repos are sibling folders. I.e.
-   * \<parent\>/MASUnityAssets 
-   * \<parent\>/MAS2025-Assignment-2
-3. Run the assignment project as normal.
+Each agent (car or drone) must independently reach a goal while avoiding collisions with:
+- Static obstacles (depending on the map),
+- Other dynamic agents (cars/drones) with their own goals.
 
-## Package resolution failed?
+Maps simulate various urban traffic scenarios:
+- `terrain_open`: no obstacles, agents can collide from any direction
+- `terrain_open_blocks`: open terrain with static obstacles
+- `terrain_intersection`: classic four-way intersection
+- `terrain_highway`: agents must merge through a bottleneck
+- `terrain_onramp`: like a highway with diagonal entries
 
 ---
 
-Relative path configuration failures are relatively common. If this occurs, you can either
+## 🔧 Implementation Details
 
-1. Edit the path in the packages file.
-   * Open the package file in this repository. "./Packages/manifest.json".
-   * Edit the relative path for "com.mas.assets" to an [absolute path](https://docs.unity3d.com/Manual/upm-localpath.html).
-2. Or re-install the package from the Unity Editor.
-   * Open the package manager in the editor. 
-   * Remove the package.
-   * Install the pack!age from disk.
+### 🗺 Path Planning
 
-![Open the package manager by navigating the application top-menu to Window/Package Manager](/Images/OpenManager.png "Open package manager by navigating the application top-menu to Window/Package Manager")
+- **Base Algorithm**: A* search (from Assignment 1), adapted to:
+  - Use cell-center coordinates as path nodes, ensuring uniform reference points
+  - Penalize proximity to obstacles
+  - Penalize having obstacles on the **left**, encouraging "keep-right" behavior
 
-![To remove packages, ensure the Packages: filter is set to InProject. Select the MAS Assets package and click Remove on the right hand side panel that appears. ](/Images/RemovePackage.png "To remove packages, ensure the Packages: filter is set to InProject. Select the MAS Assets package and click Remove on the right hand side panel that appears.")
+- **Traffic Optimization**:
+  - Introduced **directional bonuses**:  
+    - Bonus for following the same path in the same direction  
+    - Penalty for using the same path in the opposite direction  
+  - Result: organically enforced right-hand traffic and reduced head-on collisions
 
-![Install package from disk by clicking on the plus sign and choosing: Add package from disk...](/Images/AddFromDisk.png "Install package from disk by clicking on the plus sign and choosing: Add package from disk...")
+- **Path Storage**:
+  - All agent paths are stored in a global dictionary
+  - Enables real-time decision-making and path influence among agents
+
+---
+
+### 🤝 Collision Avoidance
+
+- **Cars**:
+  - Constantly analyze their next few path segments
+  - If a collision is predicted:
+    - If following another vehicle in the same direction, the rear vehicle slows/stops
+    - If paths intersect, the vehicle with the higher index (assigned at planning time) yields
+  - Uses raycasts in the driving direction to detect other agents and react accordingly
+
+- **Drones**:
+  - 360° raycasting system detects agents and obstacles in all directions
+  - If something is within a close radius, the drone steers away automatically
+  - Forward raycasts help maintain distance by stopping the drone when necessary
+  - Critical since drone collisions reduce their acceleration in simulation
+
+---
+
+## 🧪 How to Run
+
+1. Open the project in **Unity**.
+2. Use the `MapManager` object to load a map from `/Assets/StreamingAssets/Text/Maps/`.
+3. Press Play — each agent will plan and execute a collision-free path to its goal.
+4. Goals turn blue when successfully reached.
+
+---
+
+## 🛠 Technologies Used
+
+- Unity3D (C#)
+- A* Pathfinding with dynamic penalties
+- Raycasting for real-time sensing
+- Global coordination through path dictionaries
+- Custom traffic-like agent behavior
+
+---
+
+## 🧠 Learning Highlights
+
+- Real-time multi-agent decision-making
+- Autonomous vehicle behavior modeling
+- Practical tradeoffs in pathfinding vs. collision detection
+- Adaptive control logic based on simulation constraints
+
+---
+
+
+## 👤 Authors
+
+- Chloé Leyssens  
+- Josef Afreim
